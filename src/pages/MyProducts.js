@@ -3,6 +3,7 @@ import { db } from "../firebase/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { getProductThumbnail } from "../utils/productImages";
 
 function MyProducts() {
   const [products, setProducts] = useState([]);
@@ -58,10 +59,13 @@ function MyProducts() {
           <p style={{ color: "#777" }}>No products Listed.</p>
         )}
 
-        {products.map((product) => (
-          <div
-            key={product.id}
-            onClick={() => navigate(`/product/${product.id}`)}
+        {products.map((product) => {
+          const productThumbnail = getProductThumbnail(product);
+
+          return (
+            <div
+              key={product.id}
+              onClick={() => navigate(`/product/${product.id}`)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -82,10 +86,10 @@ function MyProducts() {
             }
           >
             <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-              {product.imageUrl && (
+              {productThumbnail && (
                 <img
-                  src={product.imageUrl}
-                  alt=""
+                  src={productThumbnail}
+                  alt={product.name}
                   style={{
                     width: "80px",
                     height: "80px",
@@ -150,7 +154,8 @@ function MyProducts() {
 
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

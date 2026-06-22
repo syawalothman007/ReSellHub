@@ -4,18 +4,20 @@ import { collection, addDoc, doc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
+import { MAX_PRODUCT_IMAGES, isValidImageFile } from "../utils/productImages";
 
 function AddProduct() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [originalPrice, setOriginalPrice] = useState(""); // ✅ NEW
+  const [originalPrice, setOriginalPrice] = useState("");
   const [category, setCategory] = useState("");
   const [material, setMaterial] = useState("");
-  const [condition, setCondition] = useState(""); // ✅ NEW
-  const [reason, setReason] = useState(""); // ✅ NEW
+  const [condition, setCondition] = useState("");
+  const [reason, setReason] = useState("");
   const [weight, setWeight] = useState("");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState(null);
+  const [images, setImages] = useState([]);
+  const [imagePreviews, setImagePreviews] = useState([]);
   const [hasPhone, setHasPhone] = useState(true);
   const [address, setAddress] = useState("");
 
@@ -37,6 +39,31 @@ function AddProduct() {
     checkProfile();
   }, [auth.currentUser]);
 
+  useEffect(() => {
+    const previews = images.map((image) => URL.createObjectURL(image));
+    setImagePreviews(previews);
+
+    return () => previews.forEach((preview) => URL.revokeObjectURL(preview));
+  }, [images]);
+
+  const handleImageChange = (event) => {
+    const selectedImages = Array.from(event.target.files || []);
+
+    if (selectedImages.length > MAX_PRODUCT_IMAGES) {
+      alert(`Please select up to ${MAX_PRODUCT_IMAGES} images.`);
+      event.target.value = "";
+      return;
+    }
+
+    if (!selectedImages.every(isValidImageFile)) {
+      alert("Please select image files only.");
+      event.target.value = "";
+      return;
+    }
+
+    setImages(selectedImages);
+  };
+
   const handleAdd = async () => {
     try {
       const userRef = doc(db, "users", auth.currentUser.uid);
@@ -50,28 +77,32 @@ function AddProduct() {
 
       const phone = userSnap.data().phone;
 
-      let imageUrl = "";
+      const imageUrls = await Promise.all(
+        images.map(async (image, index) => {
+          const imageRef = ref(
+            storage,
+            `products/${Date.now()}_${index}_${auth.currentUser.uid}_${image.name}`
+          );
 
-      if (image) {
-        const imageRef = ref(storage, `products/${Date.now()}_${image.name}`);
-        await uploadBytes(imageRef, image);
-        imageUrl = await getDownloadURL(imageRef);
-      }
+          await uploadBytes(imageRef, image);
+          return getDownloadURL(imageRef);
+        })
+      );
 
       await addDoc(collection(db, "products"), {
         name,
         price,
-        originalPrice, // ✅ NEW
+        originalPrice,
         category,
         material,
-        condition, // ✅ NEW
-        reason, // ✅ NEW
+        condition,
+        reason,
         weight,
         description,
-        imageUrl,
+        imageUrls,
         userId: auth.currentUser.uid,
         phone,
-        address, // ✅ NEW
+        address,
       });
 
       alert("Product added!");
@@ -92,7 +123,7 @@ function AddProduct() {
     weight &&
     description &&
     address &&
-    image;
+    images.length > 0;
 
   const inputStyle = {
     width: "100%",
@@ -265,8 +296,43 @@ function AddProduct() {
           </div>
         </div>
 
-        <label>Product Image</label>
-        <input type="file" onChange={(e) => setImage(e.target.files[0])} style={{ marginBottom: "20px" }} />
+        <label>Product Images</label>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleImageChange}
+          style={{ marginBottom: "12px" }}
+        />
+        <p style={{ color: "#777", fontSize: "12px", marginTop: 0 }}>
+          Select up to {MAX_PRODUCT_IMAGES} images.
+        </p>
+
+        {imagePreviews.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(82px, 1fr))",
+              gap: "10px",
+              marginBottom: "20px",
+            }}
+          >
+            {imagePreviews.map((preview, index) => (
+              <img
+                key={preview}
+                src={preview}
+                alt={`Product preview ${index + 1}`}
+                style={{
+                  width: "100%",
+                  aspectRatio: "1 / 1",
+                  objectFit: "cover",
+                  borderRadius: "8px",
+                  border: "1px solid #dfeade",
+                }}
+              />
+            ))}
+          </div>
+        )}
 
         <button
           onClick={handleAdd}

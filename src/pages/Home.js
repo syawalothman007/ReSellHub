@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
 import { getAuth } from "firebase/auth";
 import { collection, getDocs, addDoc } from "firebase/firestore";
+import { getProductThumbnail } from "../utils/productImages";
 
 
 function Home() {
@@ -148,33 +149,37 @@ function Home() {
         gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
         gap: "20px"
       }}>
-      {filteredProducts.map((product) => (
-        <div
-          key={product.id}
-          onClick={() => navigate(`/product/${product.id}`)}
+      {filteredProducts.map((product) => {
+        const productThumbnail = getProductThumbnail(product);
 
-          onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.03)"}
-          onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+        return (
+          <div
+            key={product.id}
+            onClick={() => navigate(`/product/${product.id}`)}
 
-          style={{
-            background: "white",
-            borderRadius: "10px",
-            overflow: "hidden",
-            cursor: "pointer",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            transition: "0.2s"
-          }}
-        >
-      {product.imageUrl && (
-        <img
-          src={product.imageUrl}
-          style={{
-            width: "100%",
-            height: "150px",
-            objectFit: "cover"
-          }}
-        />
-      )}
+            onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.03)"}
+            onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+
+            style={{
+              background: "white",
+              borderRadius: "10px",
+              overflow: "hidden",
+              cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              transition: "0.2s"
+            }}
+          >
+        {productThumbnail && (
+          <img
+            src={productThumbnail}
+            alt={product.name}
+            style={{
+              width: "100%",
+              height: "150px",
+              objectFit: "cover"
+            }}
+          />
+        )}
 
       <div style={{ padding: "10px" }}>
         <h3 style={{ margin: "5px 0" }}>{product.name}</h3>
@@ -224,7 +229,8 @@ function Home() {
         </button>
       </div>
     </div>
-  ))}
+        );
+      })}
 </div>
     </div>
   );

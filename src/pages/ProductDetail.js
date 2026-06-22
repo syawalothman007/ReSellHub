@@ -4,12 +4,14 @@ import { doc, getDoc } from "firebase/firestore";
 import { useParams, useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import { getOrCreateChat } from "../firebase/chatService";
+import { getProductImages } from "../utils/productImages";
 
 function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const auth = getAuth();
   const [product, setProduct] = useState(null);
+  const [selectedImage, setSelectedImage] = useState("");
   const [isStartingChat, setIsStartingChat] = useState(false);
 
   useEffect(() => {
@@ -18,7 +20,11 @@ function ProductDetail() {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        setProduct({ id: docSnap.id, ...docSnap.data() });
+        const productData = { id: docSnap.id, ...docSnap.data() };
+        const productImages = getProductImages(productData);
+
+        setProduct(productData);
+        setSelectedImage(productImages[0] || "");
       } else {
         alert("Product not found");
         navigate("/");
@@ -81,6 +87,9 @@ function ProductDetail() {
     );
   }
 
+  const productImages = getProductImages(product);
+  const mainImage = selectedImage || productImages[0];
+
   return (
     <div
       style={{
@@ -100,7 +109,7 @@ function ProductDetail() {
         }}
       >
         {/* 🔥 IMAGE CONTAINER (PRO VERSION) */}
-        {product.imageUrl && (
+        {mainImage && (
           <div
             style={{
               background: "#f5f5f5",
@@ -110,8 +119,8 @@ function ProductDetail() {
             }}
           >
             <img
-              src={product.imageUrl}
-              alt=""
+              src={mainImage}
+              alt={product.name}
               style={{
                 width: "100%",
                 maxHeight: "400px",
@@ -119,6 +128,50 @@ function ProductDetail() {
                 borderRadius: "8px",
               }}
             />
+
+            {productImages.length > 1 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "10px",
+                  overflowX: "auto",
+                  paddingTop: "12px",
+                }}
+              >
+                {productImages.map((imageUrl, index) => (
+                  <button
+                    key={imageUrl}
+                    type="button"
+                    onClick={() => setSelectedImage(imageUrl)}
+                    style={{
+                      padding: 0,
+                      border:
+                        imageUrl === mainImage
+                          ? "2px solid #2e7d32"
+                          : "1px solid #d8eadb",
+                      borderRadius: "8px",
+                      background: "white",
+                      cursor: "pointer",
+                      flex: "0 0 72px",
+                      height: "72px",
+                      overflow: "hidden",
+                    }}
+                    aria-label={`Show product image ${index + 1}`}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={`${product.name} thumbnail ${index + 1}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        display: "block",
+                      }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

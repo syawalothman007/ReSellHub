@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { getProductThumbnail } from "../utils/productImages";
 
 function Saved() {
   const [savedProducts, setSavedProducts] = useState([]);
@@ -103,10 +104,13 @@ function Saved() {
           gap: "20px",
         }}
       >
-        {savedProducts.map((product) => (
-          <div
-            key={product.id}
-            onClick={() => navigate(`/product/${product.id}`)}
+        {savedProducts.map((product) => {
+          const productThumbnail = getProductThumbnail(product);
+
+          return (
+            <div
+              key={product.id}
+              onClick={() => navigate(`/product/${product.id}`)}
             style={{
               background: "white",
               borderRadius: "12px",
@@ -123,10 +127,10 @@ function Saved() {
             }
           >
             {/* IMAGE */}
-            {product.imageUrl && (
+            {productThumbnail && (
               <img
-                src={product.imageUrl}
-                alt=""
+                src={productThumbnail}
+                alt={product.name}
                 style={{
                   width: "100%",
                   height: "150px",
@@ -173,7 +177,8 @@ function Saved() {
               </button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { db } from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
@@ -10,13 +10,14 @@ import { getCategoryOptions, getProductCategory } from "../utils/categories";
 
 function Home() {
   const [products, setProducts] = useState([]);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [appliedSearch, setAppliedSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const navigate = useNavigate();
   const auth = getAuth();
   const [savedIds, setSavedIds] = useState([]);
 
-  const handleSave = async (productId) => {
+  const handleSave = useCallback(async (productId) => {
     try {
       await addDoc(collection(db, "savedProducts"), {
         userId: auth.currentUser.uid,
@@ -29,7 +30,7 @@ function Home() {
       } catch (error) {
         alert(error.message);
       }
-    };
+    }, [auth.currentUser]);
 
   useEffect(() => {
     const auth = getAuth();
@@ -63,15 +64,56 @@ function Home() {
     fetchSavedProducts();
   }, []);
 
-  const categoryOptions = getCategoryOptions(
-    products.map((product) => getProductCategory(product))
+  const categoryOptions = useMemo(
+    () => getCategoryOptions(products.map((product) => getProductCategory(product))),
+    [products]
   );
 
-  const filteredProducts = products.filter((p) => {
-  const matchName = p.name.toLowerCase().includes(search.toLowerCase());
-  const matchCategory = filterCategory ? getProductCategory(p) === filterCategory : true;
-  return matchName && matchCategory;
-});
+  const normalizedSearch = appliedSearch.trim().toLowerCase();
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((p) => {
+      const matchName = normalizedSearch
+        ? p.name.toLowerCase().includes(normalizedSearch)
+        : true;
+      const matchCategory = filterCategory
+        ? getProductCategory(p) === filterCategory
+        : true;
+
+      return matchName && matchCategory;
+    });
+  }, [products, normalizedSearch, filterCategory]);
+
+  const handleSearchSubmit = useCallback((event) => {
+    event.preventDefault();
+    setAppliedSearch(searchInput.trim());
+  }, [searchInput]);
+
+  const handleResetFilters = useCallback(() => {
+    setSearchInput("");
+    setAppliedSearch("");
+    setFilterCategory("");
+  }, []);
+
+  const resultsSummary = useMemo(() => {
+    const count = filteredProducts.length;
+    const productLabel = count === 1 ? "product" : "products";
+    const resultLabel = count === 1 ? "result" : "results";
+
+    if (filterCategory && appliedSearch) {
+      return `Showing ${count} ${filterCategory} ${productLabel} for "${appliedSearch}"`;
+    }
+
+    if (appliedSearch) {
+      return `Showing ${count} ${resultLabel} for "${appliedSearch}"`;
+    }
+
+    if (filterCategory) {
+      return `Showing ${count} ${filterCategory} ${productLabel}`;
+    }
+
+    return `Showing ${count} ${productLabel}`;
+  }, [filteredProducts.length, filterCategory, appliedSearch]);
   
   return (
     <div style={{ padding: "20px", background: "#f9f9f9", minHeight: "100vh" }}>
@@ -119,38 +161,117 @@ function Home() {
 </div>
       <div style={{
         display: "flex",
-        gap: "10px",
-        marginBottom: "20px"
+        flexDirection: "column",
+        gap: "12px",
+        marginBottom: "24px",
+        padding: "16px",
+        background: "white",
+        borderRadius: "10px",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.08)"
       }}>
-        <input
-          placeholder="Search product..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+        <form
+          onSubmit={handleSearchSubmit}
           style={{
-            padding: "10px",
-            flex: 1,
-            borderRadius: "5px",
-            border: "1px solid #ccc"
-          }}
-        />
-
-        <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
-          style={{
-            padding: "10px",
-            borderRadius: "5px"
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "10px"
           }}
         >
-          <option value="">Select a category</option>
-          {categoryOptions.map((productCategory) => (
-            <option key={productCategory} value={productCategory}>
-              {productCategory}
-            </option>
-          ))}
-        </select>
+          <input
+            placeholder="Search Products..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            style={{
+              padding: "12px",
+              flex: "1 1 240px",
+              minWidth: 0,
+              borderRadius: "8px",
+              border: "1px solid #d8ded8",
+              fontSize: "15px",
+              outlineColor: "#2e7d32"
+            }}
+          />
+
+          <button
+            type="submit"
+            style={{
+              padding: "12px 22px",
+              borderRadius: "8px",
+              border: "none",
+              background: "#2e7d32",
+              color: "white",
+              fontWeight: "bold",
+              cursor: "pointer",
+              flex: "0 0 auto"
+            }}
+          >
+            Search
+          </button>
+        </form>
+
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "10px"
+        }}>
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            style={{
+              padding: "12px",
+              flex: "1 1 220px",
+              minWidth: 0,
+              borderRadius: "8px",
+              border: "1px solid #d8ded8",
+              background: "white",
+              fontSize: "15px",
+              outlineColor: "#2e7d32"
+            }}
+          >
+            <option value="">All Categories</option>
+            {categoryOptions.map((productCategory) => (
+              <option key={productCategory} value={productCategory}>
+                {productCategory}
+              </option>
+            ))}
+          </select>
+
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            style={{
+              padding: "12px 18px",
+              borderRadius: "8px",
+              border: "1px solid #2e7d32",
+              background: "white",
+              color: "#2e7d32",
+              fontWeight: "bold",
+              cursor: "pointer",
+              flex: "0 0 auto"
+            }}
+          >
+            Reset Filters
+          </button>
+        </div>
       </div>
-        <h2>Products</h2>
+
+      <div style={{
+        display: "flex",
+        alignItems: "baseline",
+        justifyContent: "space-between",
+        gap: "12px",
+        flexWrap: "wrap",
+        marginBottom: "16px"
+      }}>
+        <h2 style={{ margin: 0 }}>Products</h2>
+        <p style={{
+          margin: 0,
+          color: "#555",
+          fontWeight: "600"
+        }}>
+          {resultsSummary}
+        </p>
+      </div>
 
       <div style={{
         display: "grid",

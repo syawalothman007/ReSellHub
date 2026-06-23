@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { getCategoryOptions, getProductCategory } from "../utils/categories";
 
 import {
   Chart as ChartJS,
@@ -62,18 +63,20 @@ function Dashboard() {
   // 🔹 CATEGORY MAP
   const categoryMap = {};
   products.forEach((p) => {
-    const cat = p.category || "Others";
+    const cat = getProductCategory(p);
     categoryMap[cat] = (categoryMap[cat] || 0) + 1;
   });
 
-  const categoryLabels = Object.keys(categoryMap);
-  const categoryCounts = Object.values(categoryMap);
+  const categoryLabels = getCategoryOptions(Object.keys(categoryMap)).filter(
+    (category) => categoryMap[category]
+  );
+  const categoryCounts = categoryLabels.map((category) => categoryMap[category]);
   const categoryWasteData = categoryCounts.map((count) => count * 0.5);
 
   // 🔹 CATEGORY PRICE MAP (NEW FEATURE)
   const categoryPriceMap = {};
   products.forEach((p) => {
-    const cat = p.category || "Others";
+    const cat = getProductCategory(p);
     const price = Number(p.price) || 0;
 
     if (!categoryPriceMap[cat]) {

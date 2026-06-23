@@ -4,6 +4,7 @@ import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { getProductThumbnail } from "../utils/productImages";
+import { getProductCategory } from "../utils/categories";
 
 function MyProducts() {
   const [products, setProducts] = useState([]);
@@ -111,7 +112,7 @@ function MyProducts() {
                 </p>
 
                 <p style={{ margin: 0, fontSize: "12px", color: "#777" }}>
-                  {product.category}
+                  {getProductCategory(product)}
                 </p>
               </div>
             </div>

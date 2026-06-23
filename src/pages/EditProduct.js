@@ -13,6 +13,7 @@ import {
   getProductImages,
   isValidImageFile,
 } from "../utils/productImages";
+import { getEditCategoryOptions } from "../utils/categories";
 
 function EditProduct() {
   const { id } = useParams();
@@ -151,6 +152,8 @@ function EditProduct() {
     lineHeight: "26px",
   };
 
+  const categoryOptions = getEditCategoryOptions(product.category);
+
   return (
     <div style={{ padding: "30px", background: "#f9f9f9", minHeight: "100vh" }}>
       <div style={{
@@ -185,10 +188,12 @@ function EditProduct() {
           onChange={(e) => setProduct({ ...product, category: e.target.value })}
           style={inputStyle}
         >
-          <option value="Electronics">Electronics</option>
-          <option value="Furniture">Furniture</option>
-          <option value="Clothing">Clothing</option>
-          <option value="Others">Others</option>
+          <option value="">Select a category</option>
+          {categoryOptions.map((productCategory) => (
+            <option key={productCategory} value={productCategory}>
+              {productCategory}
+            </option>
+          ))}
         </select>
 
         <label>Material Type</label>

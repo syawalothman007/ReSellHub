@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import { getOrCreateChat } from "../firebase/chatService";
 import { getProductImages } from "../utils/productImages";
+import { getProductCategory } from "../utils/categories";
 
 function ProductDetail() {
   const { id } = useParams();
@@ -191,7 +192,9 @@ function ProductDetail() {
 
         {/* 🔥 DETAILS */}
         <div style={{ marginTop: "15px" }}>
-          <p><strong>Category:</strong> {product.category}</p>
+          <p><strong>Category:</strong> {getProductCategory(product)}</p>
+          <p><strong>Condition:</strong> {product.condition || "Not specified"}</p>
+          <p><strong>Reason for Selling:</strong> {product.reason || "Not specified"}</p>
           <p><strong>Material:</strong> {product.material}</p>
           <p><strong>Weight:</strong> {product.weight} kg</p>
         </div>

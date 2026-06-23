@@ -5,11 +5,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import { MAX_PRODUCT_IMAGES, isValidImageFile } from "../utils/productImages";
+import { PRODUCT_CATEGORIES } from "../utils/categories";
 
 function AddProduct() {
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
-  const [originalPrice, setOriginalPrice] = useState("");
   const [category, setCategory] = useState("");
   const [material, setMaterial] = useState("");
   const [condition, setCondition] = useState("");
@@ -92,7 +92,6 @@ function AddProduct() {
       await addDoc(collection(db, "products"), {
         name,
         price,
-        originalPrice,
         category,
         material,
         condition,
@@ -115,7 +114,6 @@ function AddProduct() {
   const isFormValid =
     name &&
     price &&
-    originalPrice &&
     category &&
     material &&
     condition &&
@@ -178,16 +176,14 @@ function AddProduct() {
         <label>Selling Price (RM)</label>
         <input value={price} onChange={(e) => setPrice(e.target.value)} style={inputStyle} />
 
-        <label>Original Price (RM)</label>
-        <input value={originalPrice} onChange={(e) => setOriginalPrice(e.target.value)} style={inputStyle} />
-
         <label>Category</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-          <option value="">Select</option>
-          <option>Electronics</option>
-          <option>Furniture</option>
-          <option>Clothing</option>
-          <option>Others</option>
+          <option value="">Select a category</option>
+          {PRODUCT_CATEGORIES.map((productCategory) => (
+            <option key={productCategory} value={productCategory}>
+              {productCategory}
+            </option>
+          ))}
         </select>
 
         <label>Material</label>

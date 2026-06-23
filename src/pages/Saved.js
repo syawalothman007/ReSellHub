@@ -11,6 +11,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 import { getProductThumbnail } from "../utils/productImages";
+import { getProductCategory } from "../utils/categories";
 
 function Saved() {
   const [savedProducts, setSavedProducts] = useState([]);
@@ -154,7 +155,7 @@ function Saved() {
               </p>
 
               <p style={{ fontSize: "12px", color: "#777" }}>
-                {product.category}
+                {getProductCategory(product)}
               </p>
 
               {/* REMOVE BUTTON */}

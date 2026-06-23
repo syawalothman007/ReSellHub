@@ -5,6 +5,7 @@ import logo from "../assets/logo.png";
 import { getAuth } from "firebase/auth";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { getProductThumbnail } from "../utils/productImages";
+import { getCategoryOptions, getProductCategory } from "../utils/categories";
 
 
 function Home() {
@@ -62,9 +63,13 @@ function Home() {
     fetchSavedProducts();
   }, []);
 
+  const categoryOptions = getCategoryOptions(
+    products.map((product) => getProductCategory(product))
+  );
+
   const filteredProducts = products.filter((p) => {
   const matchName = p.name.toLowerCase().includes(search.toLowerCase());
-  const matchCategory = filterCategory ? p.category === filterCategory : true;
+  const matchCategory = filterCategory ? getProductCategory(p) === filterCategory : true;
   return matchName && matchCategory;
 });
   
@@ -130,16 +135,19 @@ function Home() {
         />
 
         <select
+          value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value)}
           style={{
             padding: "10px",
             borderRadius: "5px"
           }}
         >
-          <option value="">All Categories</option>
-          <option value="Electronics">Electronics</option>
-          <option value="Furniture">Furniture</option>
-          <option value="Clothing">Clothing</option>
+          <option value="">Select a category</option>
+          {categoryOptions.map((productCategory) => (
+            <option key={productCategory} value={productCategory}>
+              {productCategory}
+            </option>
+          ))}
         </select>
       </div>
         <h2>Products</h2>
@@ -196,7 +204,7 @@ function Home() {
           fontSize: "12px",
           color: "#777"
         }}>
-          {product.category}
+          {getProductCategory(product)}
         </p>
 
         {/* Save Button */}

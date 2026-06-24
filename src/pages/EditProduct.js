@@ -13,7 +13,7 @@ import {
   getProductImages,
   isValidImageFile,
 } from "../utils/productImages";
-import { getEditCategoryOptions } from "../utils/categories";
+import { PRODUCT_CATEGORIES, getProductCategory } from "../utils/categories";
 
 function EditProduct() {
   const { id } = useParams();
@@ -32,7 +32,10 @@ function EditProduct() {
 
       if (docSnap.exists()) {
         const productData = docSnap.data();
-        setProduct(productData);
+        setProduct({
+          ...productData,
+          category: getProductCategory(productData),
+        });
         setExistingImages(getProductImages(productData));
       }
     };
@@ -152,8 +155,6 @@ function EditProduct() {
     lineHeight: "26px",
   };
 
-  const categoryOptions = getEditCategoryOptions(product.category);
-
   return (
     <div style={{ padding: "30px", background: "#f9f9f9", minHeight: "100vh" }}>
       <div style={{
@@ -188,8 +189,8 @@ function EditProduct() {
           onChange={(e) => setProduct({ ...product, category: e.target.value })}
           style={inputStyle}
         >
-          <option value="">Select a category</option>
-          {categoryOptions.map((productCategory) => (
+          <option value="">Select a Category</option>
+          {PRODUCT_CATEGORIES.map((productCategory) => (
             <option key={productCategory} value={productCategory}>
               {productCategory}
             </option>

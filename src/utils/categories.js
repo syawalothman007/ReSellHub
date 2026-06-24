@@ -1,36 +1,58 @@
-const CATEGORY_OPTIONS = [
+export const PRODUCT_CATEGORIES = [
   "Electronics",
-  "Computers & Accessories",
-  "Mobile Phones & Tablets",
-  "Fashion & Accessories",
-  "Home & Furniture",
+  "Fashion",
+  "Home & Living",
   "Sports & Outdoors",
   "Books & Education",
-  "Gaming & Consoles",
-  "Beauty & Personal Care",
   "Automotive",
-  "Collectibles & Hobbies",
-  "Musical Instruments",
+  "Hobbies & Collectibles",
   "Others",
 ];
 
-const sortCategories = (categories) => {
-  const uniqueCategories = Array.from(new Set(categories.filter(Boolean)));
-  const regularCategories = uniqueCategories
-    .filter((category) => category !== "Others")
-    .sort((a, b) => a.localeCompare(b));
-
-  return uniqueCategories.includes("Others")
-    ? [...regularCategories, "Others"]
-    : regularCategories;
+const LEGACY_CATEGORY_MAP = {
+  "computers & accessories": "Electronics",
+  "mobile phones & tablets": "Electronics",
+  "gaming & consoles": "Electronics",
+  "fashion & accessories": "Fashion",
+  "beauty & personal care": "Fashion",
+  "home & furniture": "Home & Living",
+  furniture: "Home & Living",
+  "home appliances": "Home & Living",
+  "fitness equipment": "Sports & Outdoors",
+  books: "Books & Education",
+  collectibles: "Hobbies & Collectibles",
+  "collectibles & hobbies": "Hobbies & Collectibles",
+  "musical instruments": "Hobbies & Collectibles",
 };
 
-export const PRODUCT_CATEGORIES = sortCategories(CATEGORY_OPTIONS);
+const normalizeCategoryKey = (category) => (category || "").trim().toLowerCase();
 
-export const getProductCategory = (product) => product.category || "Others";
+export const mapCategoryToBroadCategory = (category) => {
+  const trimmedCategory = (category || "").trim();
+  const categoryKey = normalizeCategoryKey(trimmedCategory);
+
+  if (!trimmedCategory) {
+    return "Others";
+  }
+
+  const broadCategory = PRODUCT_CATEGORIES.find(
+    (productCategory) => normalizeCategoryKey(productCategory) === categoryKey
+  );
+
+  if (broadCategory) {
+    return broadCategory;
+  }
+
+  return LEGACY_CATEGORY_MAP[categoryKey] || "Others";
+};
+
+export const getProductCategory = (product) =>
+  mapCategoryToBroadCategory(product?.category);
 
 export const getCategoryOptions = (extraCategories = []) =>
-  sortCategories([...PRODUCT_CATEGORIES, ...extraCategories]);
+  PRODUCT_CATEGORIES.filter((category) =>
+    [...PRODUCT_CATEGORIES, ...extraCategories.map(mapCategoryToBroadCategory)].includes(category)
+  );
 
 export const getEditCategoryOptions = (currentCategory) =>
   getCategoryOptions(currentCategory ? [currentCategory] : []);

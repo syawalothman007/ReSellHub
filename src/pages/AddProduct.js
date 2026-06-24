@@ -178,7 +178,7 @@ function AddProduct() {
 
         <label>Category</label>
         <select value={category} onChange={(e) => setCategory(e.target.value)} style={inputStyle}>
-          <option value="">Select a category</option>
+          <option value="">Select a Category</option>
           {PRODUCT_CATEGORIES.map((productCategory) => (
             <option key={productCategory} value={productCategory}>
               {productCategory}

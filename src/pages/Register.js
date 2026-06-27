@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { showToast } from "../utils/toast";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
 import {
   getAuth,
   createUserWithEmailAndPassword,
@@ -11,6 +12,7 @@ import "./Register.css";
 
 function Register() {
   const auth = getAuth();
+  const db = getFirestore();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
@@ -40,6 +42,11 @@ function Register() {
           email,
           password
         );
+      await setDoc(doc(db, "users", userCredential.user.uid), {
+        email: email,
+        role: "user",
+        createdAt: new Date()
+      });
 
       await sendEmailVerification(userCredential.user);
 
@@ -162,7 +169,7 @@ function Register() {
           </div>
 
         </div>
-                <button
+        <button
           className="register-btn"
           onClick={handleRegister}
           disabled={

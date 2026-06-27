@@ -749,12 +749,6 @@ function Home() {
         <div className="filter-controls">
           {/* CATEGORIES PILL SCROLL */}
           <div className="category-tabs">
-            <button
-              onClick={() => setFilterCategory("")}
-              className={`category-tab ${filterCategory === "" ? "active" : ""}`}
-            >
-              All Categories
-            </button>
             {categoryOptions.map((productCategory) => (
               <button
                 key={productCategory}

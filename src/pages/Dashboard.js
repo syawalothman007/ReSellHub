@@ -709,30 +709,30 @@ function Dashboard() {
         chart={<Doughnut data={categoryDistributionData} options={sharedChartOptions} />}
         insight={
           <InsightPanel
-            title="Category demand signal"
+            title="Resource Circulation Dynamics"
             metrics={[
               {
-                label: "Most popular",
+                label: "Most Reused Category",
                 value: mostPopularCategory?.name || "No data",
               },
               {
-                label: "Least popular",
+                label: "Lowest Reuse Activity",
                 value: leastPopularCategory?.name || "No data",
               },
               {
-                label: "Top category share",
+                label: "Dominant Circular Sector",
                 value: `${formatNumber(topCategoryShare)}%`,
               },
             ]}
             observation={
               hasProducts && mostPopularCategory
-                ? `${mostPopularCategory.name} accounts for ${formatNumber(topCategoryShare)}% of all listings, indicating the strongest current supply in the marketplace.`
+                ? `Active redistribution of ${mostPopularCategory.name} products represents ${formatNumber(topCategoryShare)}% of our circular marketplace, showing which type of household assets are being successfully diverted from waste streams.`
                 : emptyMessage
             }
             recommendation={
-              hasProducts && mostPopularCategory
-                ? `Feature ${mostPopularCategory.name} in browsing and search while encouraging sellers to list under-represented categories.`
-                : "Once listings exist, use this view to balance category coverage."
+              hasProducts && leastPopularCategory
+                ? `Promote sustainable consumption choices in low-activity sectors like ${leastPopularCategory.name} to expand the environmental benefits of product reuse across all categories.`
+                : "Once listings exist, use this view to analyze circular economy balance."
             }
           />
         }
@@ -744,33 +744,33 @@ function Dashboard() {
         chart={<Bar data={averagePriceChartData} options={horizontalBarOptions} />}
         insight={
           <InsightPanel
-            title="Pricing intelligence"
+            title="Socio-Economic Value of Reuse"
             metrics={[
               {
-                label: "Highest average",
+                label: "Highest Value Avoided",
                 value: highestAveragePriceCategory
                   ? `${highestAveragePriceCategory.name} (${formatCurrency(highestAveragePriceCategory.averagePrice)})`
                   : "No data",
               },
               {
-                label: "Lowest average",
+                label: "Lowest Cost Alternative",
                 value: lowestAveragePriceCategory
                   ? `${lowestAveragePriceCategory.name} (${formatCurrency(lowestAveragePriceCategory.averagePrice)})`
                   : "No data",
               },
               {
-                label: "Price gap",
+                label: "Affordability Range",
                 value: formatCurrency(averagePriceDifference),
               },
             ]}
             observation={
               highestAveragePriceCategory
-                ? `${highestAveragePriceCategory.name} generates the highest average listing value, making it the most economically significant category.`
+                ? `Recycling and exchanging items in the ${highestAveragePriceCategory.name} category avoids the carbon footprint of high-value manufacturing while providing affordable alternatives for users.`
                 : emptyMessage
             }
             recommendation={
               highestAveragePriceCategory
-                ? `Use pricing guidance and quality photos for ${highestAveragePriceCategory.name} to protect buyer trust in higher-value listings.`
+                ? `Position circular solutions in higher-priced sectors like ${highestAveragePriceCategory.name} to demonstrate how sustainable consumption directly reduces both family budgets and industrial resource demand.`
                 : "Average price insights will appear after products are listed with prices."
             }
           />
@@ -783,27 +783,27 @@ function Dashboard() {
         chart={<Bar data={wasteChartData} options={verticalBarOptions} />}
         insight={
           <InsightPanel
-            title="Reuse weight impact"
+            title="Solid Waste Landfill Diversion"
             metrics={[
               {
-                label: "Largest contributor",
+                label: "Primary Waste Offsetter",
                 value: largestWasteCategory
                   ? `${largestWasteCategory.name} (${formatNumber(largestWasteCategory.weight)} kg)`
                   : "No data",
               },
               {
-                label: "Total waste diverted",
+                label: "Total Landfill Diverted",
                 value: `${formatNumber(wasteReduced)} kg`,
               },
             ]}
             observation={
               largestWasteCategory
-                ? `${largestWasteCategory.name} contributes the most waste reduction because its listings carry the highest total product weight.`
+                ? `The reuse of products in the ${largestWasteCategory.name} category has successfully prevented the largest physical volume of municipal solid waste (${formatNumber(largestWasteCategory.weight)} kg) from entering local landfills.`
                 : emptyMessage
             }
             recommendation={
               largestWasteCategory
-                ? `Encourage complete weight information in ${largestWasteCategory.name} so sustainability impact remains accurate.`
+                ? `Encourage robust community collection of high-weight products in the ${largestWasteCategory.name} sector to optimize our net diversion metrics and support municipal recycling programs.`
                 : "Ask sellers to enter product weights to unlock reliable waste reduction analytics."
             }
           />
@@ -816,27 +816,27 @@ function Dashboard() {
         chart={<Bar data={co2ChartData} options={verticalBarOptions} />}
         insight={
           <InsightPanel
-            title="Material impact"
+            title="Avoided Carbon Footprints"
             metrics={[
               {
-                label: "Top material",
+                label: "Highest Carbon Offsetter",
                 value: largestCo2Material
                   ? `${largestCo2Material.name} (${formatNumber(largestCo2Material.co2)} kg CO2)`
                   : "No data",
               },
               {
-                label: "Total CO2 saved",
+                label: "Net CO2 Saved",
                 value: `${formatNumber(co2Saved)} kg`,
               },
             ]}
             observation={
               largestCo2Material
-                ? `${largestCo2Material.name} products contribute the largest carbon savings based on their listed weights and emission factor.`
+                ? `Circulating used ${largestCo2Material.name.toLowerCase()} products prevents high-emission extraction and processing of raw materials, keeping ${formatNumber(largestCo2Material.co2)} kg of greenhouse gases out of the atmosphere.`
                 : emptyMessage
             }
             recommendation={
               largestCo2Material
-                ? `Highlight reused ${largestCo2Material.name.toLowerCase()} products in sustainability messaging because they create measurable carbon benefits.`
+                ? `Educate buyers on the specific carbon benefits of purchasing pre-loved ${largestCo2Material.name.toLowerCase()} items to encourage targeted eco-conscious decisions.`
                 : "CO2 insights improve when listings include both material type and product weight."
             }
           />
@@ -849,27 +849,27 @@ function Dashboard() {
         chart={<Bar data={marketplaceChartData} options={horizontalBarOptions} />}
         insight={
           <InsightPanel
-            title="Marketplace trend"
+            title="Community Re-use Channels"
             metrics={[
               {
-                label: "Leading category",
+                label: "Leading Re-used Channel",
                 value: mostPopularCategory
-                  ? `${mostPopularCategory.name} (${mostPopularCategory.count} listings)`
+                  ? `${mostPopularCategory.name} (${mostPopularCategory.count} items)`
                   : "No data",
               },
               {
-                label: "Tracked categories",
+                label: "Active Circular Sectors",
                 value: categoryStats.length,
               },
             ]}
             observation={
               mostPopularCategory
-                ? `${mostPopularCategory.name} is the strongest listing trend, showing where seller activity is currently concentrated.`
+                ? `The local community has prioritized circular exchanges within the ${mostPopularCategory.name} channel, demonstrating high alignment with sustainable consumption values.`
                 : emptyMessage
             }
             recommendation={
               mostPopularCategory
-                ? `Use the leaderboard to plan homepage category placement and identify categories that need seller acquisition.`
+                ? `Leverage the high engagement in the ${mostPopularCategory.name} channel to distribute sustainability facts, driving broader awareness of carbon foot-printing and the circular economy.`
                 : "Marketplace trends will become meaningful as product coverage grows."
             }
           />

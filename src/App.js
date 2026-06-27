@@ -14,6 +14,9 @@ import EditProduct from "./pages/EditProduct";
 import ForgotPassword from "./pages/ForgotPassword";
 import Messages from "./pages/Messages";
 import ChatRoom from "./pages/ChatRoom";
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminProducts from "./pages/AdminProducts";
 
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase/firebase";
@@ -21,6 +24,7 @@ import { showToast } from "./utils/toast";
 
 import "./App.css";
 import logo from "./assets/icon.jpeg";
+import { Navigate } from "react-router-dom";
 
 import {
   getAuth,
@@ -33,6 +37,7 @@ function App() {
 
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
 
@@ -80,11 +85,13 @@ function App() {
                 currentUser.email?.split("@")[0] ||
                 "User"
               );
+              setIsAdmin(userSnap.data().role === "admin");
             } else {
               setUserName(
                 currentUser.email?.split("@")[0] ||
                 "User"
               );
+              setIsAdmin(false);
             }
           } catch (error) {
             console.error(error);
@@ -96,6 +103,7 @@ function App() {
           }
         } else {
           setUserName("");
+          setIsAdmin(false);
         }
       }
     );
@@ -358,7 +366,18 @@ function App() {
           )}
 
           {user && (
-            <>
+
+            <>{isAdmin && (
+              <NavLink
+                to="/admin"
+                className={({ isActive }) =>
+                  `navbar-menu-link ${isActive ? "active" : ""}`
+                }
+                onClick={closeMenu}
+              >
+                Admin
+              </NavLink>
+            )}
               <NavLink
                 to="/dashboard"
                 className={({ isActive }) => `navbar-menu-link ${isActive ? "active" : ""}`}
@@ -515,11 +534,37 @@ function App() {
           path="/edit/:id"
           element={<EditProduct />}
         />
-        <Route path="/forgot-password" 
-        element={<ForgotPassword />} 
+        <Route path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+        <Route
+          path="/admin"
+          element={
+            isAdmin
+              ? <AdminDashboard />
+              : <Navigate to="/" replace />
+          }
+        />
+
+        <Route
+          path="/admin/users"
+          element={
+            isAdmin
+              ? <AdminUsers />
+              : <Navigate to="/" replace />
+          }
+        />
+
+        <Route
+          path="/admin/products"
+          element={
+            isAdmin
+              ? <AdminProducts />
+              : <Navigate to="/" replace />
+          }
         />
       </Routes>
-        
+
     </Router>
   );
 }

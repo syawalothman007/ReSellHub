@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { db } from "../firebase/firebase";
 import { useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
@@ -6,16 +6,21 @@ import { getAuth } from "firebase/auth";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { getProductThumbnail } from "../utils/productImages";
 import { getCategoryOptions, getProductCategory } from "../utils/categories";
+import { analyzeProductImage } from "../firebase/aiImageSearch";
 
 
 function Home() {
   const [products, setProducts] = useState([]);
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+  const [aiSearchResult, setAiSearchResult] = useState(null);
+  const [isAiSearching, setIsAiSearching] = useState(false);
+  const [aiSearchError, setAiSearchError] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const navigate = useNavigate();
   const auth = getAuth();
   const [savedIds, setSavedIds] = useState([]);
+  const imageInputRef = useRef(null);
 
   const handleSave = useCallback(async (productId) => {
     try {
@@ -70,35 +75,101 @@ function Home() {
   );
 
   const normalizedSearch = appliedSearch.trim().toLowerCase();
+  const aiKeywords = useMemo(
+    () => aiSearchResult?.keywords?.map((keyword) => keyword.toLowerCase()) || [],
+    [aiSearchResult]
+  );
+
+  const getSearchableProductText = useCallback((product) => {
+    return [
+      product.name,
+      product.description,
+      product.category,
+      getProductCategory(product),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+  }, []);
 
   const filteredProducts = useMemo(() => {
     return products.filter((p) => {
-      const matchName = normalizedSearch
-        ? p.name.toLowerCase().includes(normalizedSearch)
-        : true;
+      const searchableProductText = getSearchableProductText(p);
+      const matchName = aiSearchResult
+        ? aiKeywords.some((keyword) => searchableProductText.includes(keyword))
+        : normalizedSearch
+          ? p.name.toLowerCase().includes(normalizedSearch)
+          : true;
       const matchCategory = filterCategory
         ? getProductCategory(p) === filterCategory
         : true;
 
       return matchName && matchCategory;
     });
-  }, [products, normalizedSearch, filterCategory]);
+  }, [products, normalizedSearch, filterCategory, aiSearchResult, aiKeywords, getSearchableProductText]);
 
   const handleSearchSubmit = useCallback((event) => {
     event.preventDefault();
+    setAiSearchResult(null);
+    setAiSearchError("");
     setAppliedSearch(searchInput.trim());
   }, [searchInput]);
 
   const handleResetFilters = useCallback(() => {
     setSearchInput("");
     setAppliedSearch("");
+    setAiSearchResult(null);
+    setAiSearchError("");
     setFilterCategory("");
+  }, []);
+
+  const handleImageSearchClick = useCallback(() => {
+    if (!isAiSearching) {
+      imageInputRef.current?.click();
+    }
+  }, [isAiSearching]);
+
+  const handleImageSearchChange = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setIsAiSearching(true);
+    setAiSearchError("");
+
+    try {
+      const result = await analyzeProductImage(file);
+      const searchTerms = [...result.keywords];
+
+      if (result.productType && !searchTerms.includes(result.productType)) {
+        searchTerms.unshift(result.productType);
+      }
+
+      setAiSearchResult({
+        ...result,
+        keywords: searchTerms,
+      });
+      setAppliedSearch(searchTerms.join(" "));
+      setSearchInput(searchTerms.join(", "));
+    } catch (error) {
+      setAiSearchResult(null);
+      setAiSearchError(error.message || "AI image search failed. Please try another image.");
+    } finally {
+      setIsAiSearching(false);
+    }
   }, []);
 
   const resultsSummary = useMemo(() => {
     const count = filteredProducts.length;
     const productLabel = count === 1 ? "product" : "products";
     const resultLabel = count === 1 ? "result" : "results";
+
+    if (aiSearchResult) {
+      return `Matching Products: ${count}`;
+    }
 
     if (filterCategory && appliedSearch) {
       return `Showing ${count} ${filterCategory} ${productLabel} for "${appliedSearch}"`;
@@ -113,7 +184,7 @@ function Home() {
     }
 
     return `Showing ${count} ${productLabel}`;
-  }, [filteredProducts.length, filterCategory, appliedSearch]);
+  }, [filteredProducts.length, filterCategory, appliedSearch, aiSearchResult]);
   
   return (
     <div style={{ padding: "20px", background: "#f9f9f9", minHeight: "100vh" }}>
@@ -192,16 +263,50 @@ function Home() {
             }}
           />
 
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+            onChange={handleImageSearchChange}
+            style={{ display: "none" }}
+          />
+
+          <button
+            type="button"
+            aria-label="AI image search"
+            title="AI image search"
+            onClick={handleImageSearchClick}
+            disabled={isAiSearching}
+            style={{
+              width: "46px",
+              height: "46px",
+              padding: 0,
+              borderRadius: "8px",
+              border: "1px solid #d8ded8",
+              background: isAiSearching ? "#edf5ee" : "white",
+              color: "#2e7d32",
+              fontSize: "20px",
+              cursor: isAiSearching ? "not-allowed" : "pointer",
+              flex: "0 0 auto",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center"
+            }}
+          >
+            {isAiSearching ? <span className="ai-search-spinner" /> : "📷"}
+          </button>
+
           <button
             type="submit"
+            disabled={isAiSearching}
             style={{
               padding: "12px 22px",
               borderRadius: "8px",
               border: "none",
-              background: "#2e7d32",
+              background: isAiSearching ? "#8bb98d" : "#2e7d32",
               color: "white",
               fontWeight: "bold",
-              cursor: "pointer",
+              cursor: isAiSearching ? "not-allowed" : "pointer",
               flex: "0 0 auto"
             }}
           >
@@ -255,6 +360,55 @@ function Home() {
         </div>
       </div>
 
+      {aiSearchError && (
+        <div style={{
+          marginBottom: "16px",
+          padding: "14px 16px",
+          borderRadius: "8px",
+          border: "1px solid #f0b8b8",
+          background: "#fff5f5",
+          color: "#9b1c1c",
+          fontWeight: "600"
+        }}>
+          {aiSearchError}
+        </div>
+      )}
+
+      {aiSearchResult && (
+        <div style={{
+          marginBottom: "16px",
+          padding: "16px",
+          background: "white",
+          borderRadius: "10px",
+          border: "1px solid #d8ead9",
+          boxShadow: "0 2px 10px rgba(0,0,0,0.06)"
+        }}>
+          <h3 style={{ margin: "0 0 12px", color: "#2e7d32" }}>
+            AI Search Results
+          </h3>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>Detected Product:</strong>{" "}
+            {aiSearchResult.productType || "Unknown"}
+          </p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>Detected Category:</strong>{" "}
+            {aiSearchResult.category || "Unknown"}
+          </p>
+
+          <p style={{ margin: "6px 0" }}>
+            <strong>Keywords:</strong>{" "}
+            {aiSearchResult.keywords.join(", ")}
+          </p>
+
+          <p style={{ margin: "6px 0 0" }}>
+            <strong>Matching Products:</strong>{" "}
+            {filteredProducts.length}
+          </p>
+        </div>
+      )}
+
       <div style={{
         display: "flex",
         alignItems: "baseline",
@@ -278,6 +432,27 @@ function Home() {
         gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
         gap: "20px"
       }}>
+      {filteredProducts.length === 0 && (
+        <div style={{
+          gridColumn: "1 / -1",
+          background: "white",
+          padding: "24px",
+          borderRadius: "10px",
+          textAlign: "center",
+          color: "#555",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)"
+        }}>
+          <h3 style={{ marginTop: 0, color: "#333" }}>
+            {aiSearchResult ? "No similar products found." : "No products found."}
+          </h3>
+          {aiSearchResult && (
+            <p style={{ marginBottom: 0 }}>
+              Try another image or use text search.
+            </p>
+          )}
+        </div>
+      )}
+
       {filteredProducts.map((product) => {
         const productThumbnail = getProductThumbnail(product);
 

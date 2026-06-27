@@ -27,3 +27,18 @@ button {
 button:hover {
   background: #0056b3;
 }
+
+.ai-search-spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid #cfe4d1;
+  border-top-color: #2e7d32;
+  border-radius: 50%;
+  animation: ai-search-spin 0.8s linear infinite;
+}
+
+@keyframes ai-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

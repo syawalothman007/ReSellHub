@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { db, storage } from "../firebase/firebase";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { showToast } from "../utils/toast";
 
 function Profile() {
   const auth = getAuth();
@@ -19,6 +20,8 @@ function Profile() {
 
   const [profileImage, setProfileImage] = useState(null);
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 🔹 Fetch Profile
   useEffect(() => {
@@ -52,6 +55,19 @@ function Profile() {
     fetchProfile();
   }, [user]);
 
+  // 🔹 Preview profile image locally when selected
+  useEffect(() => {
+    if (!profileImage) {
+      setPreviewUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(profileImage);
+    setPreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [profileImage]);
+
   // 🔹 Handle Input
   const handleChange = (e) => {
     setForm({
@@ -61,8 +77,12 @@ function Profile() {
   };
 
   // 🔹 Save Profile
-  const handleSave = async () => {
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!form.fullName || isSubmitting) return;
+
     try {
+      setIsSubmitting(true);
       let imageUrl = profileImageUrl;
 
       if (profileImage) {
@@ -72,7 +92,6 @@ function Profile() {
         );
 
         await uploadBytes(imageRef, profileImage);
-
         imageUrl = await getDownloadURL(imageRef);
       }
 
@@ -82,183 +101,291 @@ function Profile() {
       });
 
       setProfileImageUrl(imageUrl);
-
-      alert("Profile updated!");
+      setProfileImage(null); // Clear local preview state since it has uploaded
+      showToast("Profile updated successfully!", "success");
     } catch (error) {
-      alert(error.message);
+      showToast(error.message, "error");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const inputStyle = {
-    width: "100%",
-    padding: "10px",
-    marginBottom: "15px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-  };
-
   return (
-    <div
-      style={{
-        padding: "30px",
-        background: "#f9f9f9",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "550px",
-          margin: "auto",
-          background: "white",
-          padding: "30px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-        }}
-      >
-        <h1
-          style={{
-            textAlign: "center",
-            color: "#2e7d32",
-            marginBottom: "20px",
-          }}
-        >
-          My Profile
-        </h1>
-
-        {/* PROFILE HEADER */}
-        <div
-          style={{
-            textAlign: "center",
-            marginBottom: "30px",
-            paddingBottom: "20px",
-            borderBottom: "1px solid #eee",
-          }}
-        >
-          <img
-            src={
-              profileImageUrl ||
-              "https://via.placeholder.com/150?text=Profile"
+    <div className="profile-page">
+      <style>
+        {`
+          .profile-page {
+            padding: var(--space-xl) var(--space-lg);
+            background: var(--bg-default);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .profile-card {
+            width: 100%;
+            max-width: 600px;
+            background: var(--bg-card);
+            padding: var(--space-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-xl);
+          }
+          .profile-header-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding-bottom: var(--space-xl);
+            border-bottom: 1px solid var(--border);
+          }
+          .avatar-uploader {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 4px solid var(--primary-light);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all var(--transition-normal);
+            margin-bottom: var(--space-md);
+          }
+          .avatar-uploader:hover {
+            border-color: var(--primary);
+            transform: scale(1.02);
+            box-shadow: var(--shadow-md);
+          }
+          .avatar-uploader img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .avatar-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 35%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: opacity var(--transition-fast);
+          }
+          .avatar-uploader:hover .avatar-overlay {
+            background: rgba(0, 0, 0, 0.7);
+          }
+          .profile-title {
+            color: var(--text-dark);
+            font-family: var(--font-title);
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 0 var(--space-xs);
+          }
+          .profile-subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin: 0;
+          }
+          .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-lg);
+          }
+          @media (min-width: 600px) {
+            .form-grid.two-cols {
+              grid-template-columns: 1fr 1fr;
             }
-            alt="Profile"
-            style={{
-              width: "130px",
-              height: "130px",
-              borderRadius: "50%",
-              objectFit: "cover",
-              border: "4px solid #2e7d32",
-              marginBottom: "15px",
+          }
+          .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+          }
+          .form-group label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+          }
+          .form-control {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            border: 1.5px solid var(--border);
+            background: #fff;
+            color: var(--text);
+            font-size: 1rem;
+            transition: all var(--transition-fast);
+          }
+          .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+          }
+          .form-control:disabled {
+            background: #f3f4f6;
+            cursor: not-allowed;
+          }
+          textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+          }
+          .save-btn {
+            width: 100%;
+            padding: 14px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: var(--space-md);
+          }
+        `}
+      </style>
+
+      <form className="profile-card" onSubmit={handleSave}>
+        {/* PROFILE HEADER */}
+        <div className="profile-header-section">
+          <label htmlFor="profile-upload" className="avatar-uploader" tabIndex="0" onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') document.getElementById('profile-upload').click(); }}>
+            <img
+              src={
+                previewUrl ||
+                profileImageUrl ||
+                "https://via.placeholder.com/150?text=Profile"
+              }
+              alt="Profile avatar"
+            />
+            <div className="avatar-overlay">
+              <span>📷 Edit</span>
+            </div>
+          </label>
+          <input
+            id="profile-upload"
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                setProfileImage(e.target.files[0]);
+              }
             }}
+            style={{ display: "none" }}
+            disabled={isSubmitting}
           />
 
-          <div style={{ marginBottom: "10px" }}>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(e) => setProfileImage(e.target.files[0])}
-            />
-          </div>
-
-          <h2 style={{ marginBottom: "5px" }}>
-            {form.fullName || "User"}
+          <h2 className="profile-title">
+            {form.fullName || "User Profile"}
           </h2>
-
-          <p
-            style={{
-              color: "#777",
-              margin: 0,
-            }}
-          >
+          <p className="profile-subtitle">
             {form.email}
           </p>
         </div>
 
         {/* PERSONAL INFO */}
-        <h3 style={{ marginBottom: "15px" }}>
-          Personal Information
-        </h3>
+        <div className="form-grid">
+          <div className="form-group">
+            <label htmlFor="fullName">Full Name</label>
+            <input
+              id="fullName"
+              name="fullName"
+              className="form-control"
+              value={form.fullName}
+              onChange={handleChange}
+              disabled={isSubmitting}
+              required
+            />
+          </div>
 
-        <label>Full Name</label>
-        <input
-          name="fullName"
-          value={form.fullName}
-          onChange={handleChange}
-          style={inputStyle}
-        />
+          <div className="form-group">
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              name="email"
+              className="form-control"
+              value={form.email}
+              disabled
+            />
+          </div>
 
-        <label>Email</label>
-        <input
-          name="email"
-          value={form.email}
-          disabled
-          style={{
-            ...inputStyle,
-            background: "#f3f3f3",
-          }}
-        />
+          <div className="form-group">
+            <label htmlFor="phone">Phone Number</label>
+            <input
+              id="phone"
+              name="phone"
+              className="form-control"
+              placeholder="+60123456789"
+              value={form.phone}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            />
+          </div>
 
-        <label>Phone Number</label>
-        <input
-          name="phone"
-          value={form.phone}
-          onChange={handleChange}
-          style={inputStyle}
-        />
+          <div className="form-grid two-cols">
+            <div className="form-group">
+              <label htmlFor="gender">Gender</label>
+              <select
+                id="gender"
+                name="gender"
+                className="form-control"
+                value={form.gender}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
 
-        <label>Gender</label>
-        <select
-          name="gender"
-          value={form.gender}
-          onChange={handleChange}
-          style={inputStyle}
-        >
-          <option value="">Select Gender</option>
-          <option value="Male">Male</option>
-          <option value="Female">Female</option>
-        </select>
+            <div className="form-group">
+              <label htmlFor="birthDate">Date of Birth</label>
+              <input
+                id="birthDate"
+                type="date"
+                name="birthDate"
+                className="form-control"
+                value={form.birthDate}
+                onChange={handleChange}
+                disabled={isSubmitting}
+              />
+            </div>
+          </div>
 
-        <label>Date of Birth</label>
-        <input
-          type="date"
-          name="birthDate"
-          value={form.birthDate}
-          onChange={handleChange}
-          style={inputStyle}
-        />
-
-        <label>Address</label>
-        <textarea
-          name="address"
-          value={form.address}
-          onChange={handleChange}
-          rows="3"
-          style={{
-            ...inputStyle,
-            resize: "vertical",
-          }}
-        />
+          <div className="form-group">
+            <label htmlFor="address">Address</label>
+            <textarea
+              id="address"
+              name="address"
+              className="form-control"
+              value={form.address}
+              onChange={handleChange}
+              rows="3"
+              disabled={isSubmitting}
+            />
+          </div>
+        </div>
 
         <button
-          onClick={handleSave}
-          disabled={!form.fullName}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: form.fullName
-              ? "#2e7d32"
-              : "#aaa",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: form.fullName
-              ? "pointer"
-              : "not-allowed",
-            fontWeight: "bold",
-            marginTop: "10px",
-          }}
+          type="submit"
+          className="btn btn-primary save-btn"
+          disabled={!form.fullName || isSubmitting}
         >
-          Save Profile
+          {isSubmitting ? (
+            <>
+              <span className="spinner" style={{ width: '22px', height: '22px', borderWidth: '3px' }} />
+              Saving...
+            </>
+          ) : (
+            "Save Profile"
+          )}
         </button>
-      </div>
+      </form>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { db } from "../firebase/firebase";
 import { collection, getDocs } from "firebase/firestore";
-import { getCategoryOptions, getProductCategory } from "../utils/categories";
+import { getProductCategory } from "../utils/categories";
 
 import {
   Chart as ChartJS,
@@ -153,7 +153,27 @@ function Dashboard() {
     return sum + getWeight(product) * factor;
   }, 0);
 
+  const DASHBOARD_CATEGORIES = [
+    "Electronics",
+    "Fashion",
+    "Home & Living",
+    "Sports & Outdoors",
+    "Books & Education",
+    "Automotive",
+    "Hobbies & Collectibles",
+    "Others",
+  ];
+
   const categoryStatsMap = {};
+  DASHBOARD_CATEGORIES.forEach((cat) => {
+    categoryStatsMap[cat] = {
+      name: cat,
+      count: 0,
+      value: 0,
+      weight: 0,
+    };
+  });
+
   const materialStatsMap = {};
 
   products.forEach((product) => {
@@ -191,11 +211,8 @@ function Dashboard() {
     materialStatsMap[material].co2 += co2;
   });
 
-  const categoryLabels = getCategoryOptions(Object.keys(categoryStatsMap)).filter(
-    (category) => categoryStatsMap[category]
-  );
-
-  const categoryStats = categoryLabels.map((category) => categoryStatsMap[category]);
+  const categoryLabels = DASHBOARD_CATEGORIES;
+  const categoryStats = DASHBOARD_CATEGORIES.map((category) => categoryStatsMap[category]);
   const priceStats = categoryStats
     .map((category) => ({
       ...category,

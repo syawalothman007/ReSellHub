@@ -3,6 +3,7 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -10,6 +11,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/firebase";
 import { sendMessage } from "../firebase/chatService";
+import { showToast } from "../utils/toast";
 
 function ChatRoom() {
   const { chatId } = useParams();
@@ -22,6 +24,7 @@ function ChatRoom() {
   const [messageText, setMessageText] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [partnerProfile, setPartnerProfile] = useState(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -43,7 +46,7 @@ function ChatRoom() {
       chatRef,
       (snapshot) => {
         if (!snapshot.exists()) {
-          alert("Chat not found.");
+          showToast("Chat not found.", "error");
           navigate("/messages");
           return;
         }
@@ -51,7 +54,7 @@ function ChatRoom() {
         const chatData = { id: snapshot.id, ...snapshot.data() };
 
         if (!chatData.participants?.includes(user.uid)) {
-          alert("You do not have access to this chat.");
+          showToast("You do not have access to this chat.", "error");
           navigate("/messages");
           return;
         }
@@ -60,7 +63,7 @@ function ChatRoom() {
         setLoading(false);
       },
       (error) => {
-        alert(error.message);
+        showToast(error.message, "error");
         setLoading(false);
       }
     );
@@ -81,7 +84,7 @@ function ChatRoom() {
         setMessages(data);
       },
       (error) => {
-        alert(error.message);
+        showToast(error.message, "error");
       }
     );
 
@@ -90,6 +93,27 @@ function ChatRoom() {
       unsubscribeMessages();
     };
   }, [user, chatId, navigate]);
+
+  // 🔹 Fetch partner's profile name and photo
+  useEffect(() => {
+    if (!chat || !user) return;
+
+    const fetchPartnerProfile = async () => {
+      const partnerUid = chat.participants?.find((uid) => uid !== user.uid);
+      if (!partnerUid) return;
+
+      try {
+        const userSnap = await getDoc(doc(db, "users", partnerUid));
+        if (userSnap.exists()) {
+          setPartnerProfile(userSnap.data());
+        }
+      } catch (e) {
+        console.error("Error fetching partner profile:", e);
+      }
+    };
+
+    fetchPartnerProfile();
+  }, [chat, user]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -109,7 +133,7 @@ function ChatRoom() {
       });
       setMessageText("");
     } catch (error) {
-      alert(error.message);
+      showToast(error.message, "error");
     } finally {
       setSending(false);
     }
@@ -124,80 +148,278 @@ function ChatRoom() {
     });
   };
 
+  const getInitials = (name) => {
+    if (!name) return "?";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase();
+  };
+
   if (loading) {
     return (
-      <div style={{ padding: "30px", textAlign: "center" }}>
-        <p>Loading chat...</p>
+      <div className="chat-room-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <span className="spinner" style={{ width: '40px', height: '40px', borderWidth: '4px' }} />
       </div>
     );
   }
 
+  const partnerName = partnerProfile?.fullName || "User";
+  const avatarUrl = partnerProfile?.profileImageUrl;
+
   return (
-    <div
-      style={{
-        padding: "30px",
-        background: "#f9f9f9",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "850px",
-          margin: "auto",
-          background: "white",
-          borderRadius: "15px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            padding: "18px 20px",
-            background: "#eef7f1",
-            borderBottom: "1px solid #dfeade",
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "15px",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <h2 style={{ margin: "0 0 4px", color: "#2e7d32" }}>
-              {chat?.productTitle || "Product chat"}
-            </h2>
-            <p style={{ margin: 0, color: "#777", fontSize: "13px" }}>
-              Marketplace conversation
-            </p>
+    <div className="chat-room-page">
+      <style>
+        {`
+          .chat-room-page {
+            padding: var(--space-xl) var(--space-lg);
+            background: var(--bg-default);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .chat-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+          }
+          .chat-header {
+            padding: var(--space-md) var(--space-lg);
+            background: #f9fafb;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-md);
+          }
+          .header-user-info {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            min-width: 0;
+          }
+          .chat-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-light);
+            color: var(--primary-dark);
+            font-weight: 700;
+            font-size: 1rem;
+            border: 1px solid var(--border);
+            flex-shrink: 0;
+          }
+          .chat-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .user-text {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+          }
+          .partner-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--text-dark);
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .product-context {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .back-btn {
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 8px 14px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all var(--transition-fast);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .back-btn:hover {
+            background: #f3f4f6;
+            border-color: #d1d5db;
+          }
+          .messages-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--space-lg);
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+          }
+          .message-row {
+            display: flex;
+            width: 100%;
+          }
+          .message-row.own {
+            justify-content: flex-end;
+          }
+          .message-row.partner {
+            justify-content: flex-start;
+          }
+          .message-bubble {
+            max-width: 70%;
+            padding: 10px 14px;
+            border-radius: var(--radius-md);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            position: relative;
+            animation: bubbleFadeIn 0.3s ease-out;
+          }
+          @keyframes bubbleFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .message-row.own .message-bubble {
+            background: var(--primary);
+            color: white;
+            border-bottom-right-radius: 2px;
+          }
+          .message-row.partner .message-bubble {
+            background: white;
+            color: var(--text-dark);
+            border: 1px solid var(--border);
+            border-bottom-left-radius: 2px;
+          }
+          .message-text {
+            margin: 0;
+            line-height: 1.45;
+            font-size: 0.95rem;
+            word-break: break-word;
+          }
+          .message-time {
+            align-self: flex-end;
+            font-size: 0.7rem;
+            opacity: 0.75;
+          }
+          .message-row.partner .message-time {
+            color: var(--text-muted);
+          }
+          .chat-input-form {
+            display: flex;
+            gap: var(--space-md);
+            padding: var(--space-md) var(--space-lg);
+            background: white;
+            border-top: 1px solid var(--border);
+          }
+          .chat-input-field {
+            flex: 1;
+            padding: 12px 14px;
+            border-radius: var(--radius-md);
+            border: 1.5px solid var(--border);
+            outline: none;
+            font-size: 0.95rem;
+            transition: all var(--transition-fast);
+          }
+          .chat-input-field:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-light);
+          }
+          .chat-input-field:disabled {
+             background: #f3f4f6;
+             cursor: not-allowed;
+          }
+          .send-btn {
+            padding: 0 var(--space-xl);
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+          /* Empty Chat State */
+          .empty-chat {
+            text-align: center;
+            margin: auto;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--space-sm);
+            padding: var(--space-2xl);
+          }
+          .empty-chat-icon {
+            font-size: 3rem;
+            margin-bottom: var(--space-xs);
+          }
+          .empty-chat h3 {
+            color: var(--text-dark);
+            margin: 0;
+            font-family: var(--font-title);
+          }
+          .empty-chat p {
+            margin: 0;
+            font-size: 0.95rem;
+          }
+        `}
+      </style>
+
+      <div className="chat-container">
+        {/* CHAT HEADER */}
+        <div className="chat-header">
+          <div className="header-user-info">
+            <div className="chat-avatar">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={partnerName} />
+              ) : (
+                getInitials(partnerName)
+              )}
+            </div>
+            <div className="user-text">
+              <h2 className="partner-name">{partnerName}</h2>
+              {chat?.productTitle && (
+                <p className="product-context">Inquiring: {chat.productTitle}</p>
+              )}
+            </div>
           </div>
 
-          <button
-            onClick={() => navigate("/messages")}
-            style={{
-              background: "white",
-              color: "#2e7d32",
-              border: "1px solid #c8ddcc",
-              borderRadius: "8px",
-              padding: "8px 12px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
+          <button className="back-btn" onClick={() => navigate("/messages")}>
+            <svg style={{ width: '16px', height: '16px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
             Back
           </button>
         </div>
 
-        <div
-          style={{
-            height: "430px",
-            overflowY: "auto",
-            padding: "20px",
-            background: "#fbfdfb",
-          }}
-        >
+        {/* MESSAGES AREA */}
+        <div className="messages-area">
           {messages.length === 0 && (
-            <div style={{ textAlign: "center", color: "#777", marginTop: "120px" }}>
-              <h3 style={{ color: "#333" }}>No messages yet</h3>
-              <p>Send the first message about this product.</p>
+            <div className="empty-chat">
+              <span className="empty-chat-icon">👋</span>
+              <h3>Say Hello!</h3>
+              <p>Start the conversation. Be polite and eco-conscious.</p>
             </div>
           )}
 
@@ -207,81 +429,41 @@ function ChatRoom() {
             return (
               <div
                 key={message.id}
-                style={{
-                  display: "flex",
-                  justifyContent: isOwnMessage ? "flex-end" : "flex-start",
-                  marginBottom: "12px",
-                }}
+                className={`message-row ${isOwnMessage ? "own" : "partner"}`}
               >
-                <div
-                  style={{
-                    maxWidth: "70%",
-                    padding: "10px 12px",
-                    borderRadius: "12px",
-                    background: isOwnMessage ? "#2e7d32" : "white",
-                    color: isOwnMessage ? "white" : "#333",
-                    border: isOwnMessage ? "none" : "1px solid #e4e4e4",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-                  }}
-                >
-                  <p style={{ margin: "0 0 4px", lineHeight: "1.4" }}>
-                    {message.text}
-                  </p>
-                  <span
-                    style={{
-                      display: "block",
-                      textAlign: "right",
-                      fontSize: "11px",
-                      opacity: 0.75,
-                    }}
-                  >
+                <div className="message-bubble">
+                  <p className="message-text">{message.text}</p>
+                  <span className="message-time">
                     {formatTime(message.createdAt)}
                   </span>
                 </div>
               </div>
             );
           })}
-
           <div ref={bottomRef} />
         </div>
 
-        <form
-          onSubmit={handleSend}
-          style={{
-            display: "flex",
-            gap: "10px",
-            padding: "15px",
-            borderTop: "1px solid #eee",
-          }}
-        >
+        {/* INPUT FORM */}
+        <form className="chat-input-form" onSubmit={handleSend}>
           <input
+            className="chat-input-field"
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
             placeholder="Type your message..."
             maxLength="500"
-            style={{
-              flex: 1,
-              padding: "12px",
-              borderRadius: "8px",
-              border: "1px solid #ccc",
-              width: "auto",
-            }}
+            disabled={sending}
+            required
           />
-
           <button
             type="submit"
+            className="btn btn-primary send-btn"
             disabled={sending || !messageText.trim()}
-            style={{
-              background: sending || !messageText.trim() ? "#aaa" : "#2e7d32",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              padding: "0 18px",
-              cursor: sending || !messageText.trim() ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-            }}
           >
-            Send
+            {sending ? (
+              <span className="spinner" style={{ width: '18px', height: '18px', borderWidth: '2.5px' }} />
+            ) : (
+              "Send"
+            )}
           </button>
         </form>
       </div>

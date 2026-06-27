@@ -6,6 +6,7 @@ import { getAuth } from "firebase/auth";
 import { getOrCreateChat } from "../firebase/chatService";
 import { getProductImages } from "../utils/productImages";
 import { getProductCategory } from "../utils/categories";
+import { showToast } from "../utils/toast";
 
 function ProductDetail() {
   const { id } = useParams();
@@ -27,7 +28,7 @@ function ProductDetail() {
         setProduct(productData);
         setSelectedImage(productImages[0] || "");
       } else {
-        alert("Product not found");
+        showToast("Product not found.", "error");
         navigate("/");
       }
     };
@@ -46,18 +47,18 @@ function ProductDetail() {
     const currentUser = auth.currentUser;
 
     if (!currentUser) {
-      alert("Please login first to chat with the seller.");
+      showToast("Please login first to chat with the seller.", "error");
       navigate("/login");
       return;
     }
 
     if (!product.userId) {
-      alert("Seller information is missing for this product.");
+      showToast("Seller information is missing for this product.", "error");
       return;
     }
 
     if (currentUser.uid === product.userId) {
-      alert("You cannot chat with yourself about your own product.");
+      showToast("You cannot chat with yourself about your own product.", "error");
       return;
     }
 
@@ -73,184 +74,316 @@ function ProductDetail() {
 
       navigate(`/messages/${chatId}`);
     } catch (error) {
-      alert(error.message);
+      showToast(error.message || "Failed to start chat.", "error");
     } finally {
       setIsStartingChat(false);
     }
   };
 
-  // 🔹 LOADING
-  if (!product) {
-    return (
-      <div style={{ padding: "30px", textAlign: "center" }}>
-        <p>Loading product...</p>
-      </div>
-    );
-  }
-
-  const productImages = getProductImages(product);
+  const productImages = product ? getProductImages(product) : [];
   const mainImage = selectedImage || productImages[0];
 
   return (
-    <div
-      style={{
-        padding: "30px",
-        background: "#f9f9f9",
-        minHeight: "100vh",
-      }}
-    >
-      <div
-        style={{
-          maxWidth: "800px",
-          margin: "auto",
-          background: "white",
-          padding: "25px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-        }}
-      >
-        {/* 🔥 IMAGE CONTAINER (PRO VERSION) */}
-        {mainImage && (
-          <div
-            style={{
-              background: "#f5f5f5",
-              padding: "10px",
-              borderRadius: "10px",
-              marginBottom: "20px",
-            }}
-          >
-            <img
-              src={mainImage}
-              alt={product.name}
-              style={{
-                width: "100%",
-                maxHeight: "400px",
-                objectFit: "contain",
-                borderRadius: "8px",
-              }}
-            />
+    <div className="product-detail-page">
+      <style>
+        {`
+          .product-detail-page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--space-xl) var(--space-lg);
+          }
+          
+          .product-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-2xl);
+            background: var(--bg-card);
+            padding: var(--space-2xl);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-premium);
+            border: 1px solid var(--border);
+          }
+          
+          @media (min-width: 900px) {
+            .product-container {
+              grid-template-columns: 1fr 1fr;
+            }
+          }
+          
+          .gallery-section {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-md);
+          }
+          
+          .main-image-container {
+            width: 100%;
+            height: 500px;
+            background: #f9fafb;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border);
+          }
+          
+          .main-image {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: var(--radius-md);
+          }
+          
+          .thumbnail-list {
+            display: flex;
+            gap: var(--space-sm);
+            overflow-x: auto;
+            padding-bottom: var(--space-xs);
+            scrollbar-width: thin;
+          }
+          
+          .thumbnail-btn {
+            flex: 0 0 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            background: #f9fafb;
+            padding: 0;
+          }
+          
+          .thumbnail-btn.active {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary-light);
+          }
+          
+          .thumbnail-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          
+          .info-section {
+            display: flex;
+            flex-direction: column;
+          }
+          
+          .product-title {
+            font-family: var(--font-title);
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: var(--space-xs);
+            line-height: 1.2;
+          }
+          
+          .product-price {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: var(--space-lg);
+          }
+          
+          .specs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-md);
+            margin-bottom: var(--space-xl);
+            background: #f9fafb;
+            padding: var(--space-lg);
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+          }
+          
+          .spec-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+          }
+          
+          .spec-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+          }
+          
+          .spec-value {
+            font-weight: 600;
+            color: var(--text);
+            font-size: 1.05rem;
+          }
+          
+          .section-subtitle {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: var(--space-sm);
+            color: var(--text-dark);
+          }
+          
+          .product-description {
+            color: var(--text);
+            line-height: 1.7;
+            margin-bottom: var(--space-xl);
+            white-space: pre-wrap;
+          }
+          
+          .product-address {
+            color: var(--text);
+            line-height: 1.5;
+            margin-bottom: var(--space-xl);
+          }
+          
+          .action-buttons {
+            display: flex;
+            gap: var(--space-md);
+            flex-wrap: wrap;
+            margin-top: auto;
+          }
+          
+          .action-buttons .btn {
+            flex: 1;
+            min-width: 200px;
+            padding: 16px;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+          }
+          
+          .skeleton-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--space-2xl);
+          }
+          
+          @media (min-width: 900px) {
+            .skeleton-container {
+              grid-template-columns: 1fr 1fr;
+            }
+          }
+        `}
+      </style>
 
+      {!product ? (
+        <div className="product-container skeleton-container">
+          <div className="skeleton" style={{ height: '500px', borderRadius: 'var(--radius-md)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="skeleton" style={{ height: '50px', width: '80%' }} />
+            <div className="skeleton" style={{ height: '40px', width: '40%' }} />
+            <div className="skeleton" style={{ height: '120px', width: '100%', borderRadius: 'var(--radius-md)' }} />
+            <div className="skeleton" style={{ height: '20px', width: '100%' }} />
+            <div className="skeleton" style={{ height: '20px', width: '90%' }} />
+            <div className="skeleton" style={{ height: '20px', width: '95%' }} />
+          </div>
+        </div>
+      ) : (
+        <div className="product-container">
+          <div className="gallery-section">
+            {mainImage && (
+              <div className="main-image-container">
+                <img
+                  src={mainImage}
+                  alt={product.name}
+                  className="main-image"
+                />
+              </div>
+            )}
+            
             {productImages.length > 1 && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: "10px",
-                  overflowX: "auto",
-                  paddingTop: "12px",
-                }}
-              >
+              <div className="thumbnail-list">
                 {productImages.map((imageUrl, index) => (
                   <button
                     key={imageUrl}
                     type="button"
                     onClick={() => setSelectedImage(imageUrl)}
-                    style={{
-                      padding: 0,
-                      border:
-                        imageUrl === mainImage
-                          ? "2px solid #2e7d32"
-                          : "1px solid #d8eadb",
-                      borderRadius: "8px",
-                      background: "white",
-                      cursor: "pointer",
-                      flex: "0 0 72px",
-                      height: "72px",
-                      overflow: "hidden",
-                    }}
+                    className={`thumbnail-btn ${imageUrl === mainImage ? "active" : ""}`}
                     aria-label={`Show product image ${index + 1}`}
                   >
                     <img
                       src={imageUrl}
                       alt={`${product.name} thumbnail ${index + 1}`}
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover",
-                        display: "block",
-                      }}
                     />
                   </button>
                 ))}
               </div>
             )}
           </div>
-        )}
 
-        {/* 🔥 TITLE */}
-        <h1 style={{ marginBottom: "10px" }}>{product.name}</h1>
+          <div className="info-section">
+            <h1 className="product-title">{product.name}</h1>
+            <p className="product-price">RM {product.price}</p>
 
-        {/* 🔥 PRICE */}
-        <p
-          style={{
-            fontSize: "22px",
-            color: "#2e7d32",
-            fontWeight: "bold",
-          }}
-        >
-          RM {product.price}
-        </p>
+            <div className="specs-grid">
+              <div className="spec-item">
+                <span className="spec-label">Category</span>
+                <span className="spec-value">{getProductCategory(product)}</span>
+              </div>
+              <div className="spec-item">
+                <span className="spec-label">Condition</span>
+                <span className="spec-value">{product.condition || "Not specified"}</span>
+              </div>
+              <div className="spec-item">
+                <span className="spec-label">Material</span>
+                <span className="spec-value">{product.material || "N/A"}</span>
+              </div>
+              <div className="spec-item">
+                <span className="spec-label">Weight</span>
+                <span className="spec-value">{product.weight ? `${product.weight} kg` : "N/A"}</span>
+              </div>
+              <div className="spec-item" style={{ gridColumn: "1 / -1" }}>
+                <span className="spec-label">Reason for Selling</span>
+                <span className="spec-value">{product.reason || "Not specified"}</span>
+              </div>
+            </div>
 
-        {/* 🔥 DETAILS */}
-        <div style={{ marginTop: "15px" }}>
-          <p><strong>Category:</strong> {getProductCategory(product)}</p>
-          <p><strong>Condition:</strong> {product.condition || "Not specified"}</p>
-          <p><strong>Reason for Selling:</strong> {product.reason || "Not specified"}</p>
-          <p><strong>Material:</strong> {product.material}</p>
-          <p><strong>Weight:</strong> {product.weight} kg</p>
+            <div className="product-description-container">
+              <h3 className="section-subtitle">Description</h3>
+              <p className="product-description">
+                {product.description || "No description provided."}
+              </p>
+            </div>
+
+            {product.address && (
+              <div className="product-address-container">
+                <h3 className="section-subtitle">Location</h3>
+                <p className="product-address">{product.address}</p>
+              </div>
+            )}
+
+            <div className="action-buttons">
+              <button
+                onClick={handleChatSeller}
+                disabled={isStartingChat}
+                className="btn btn-primary"
+              >
+                {isStartingChat ? (
+                  <>
+                    <span className="spinner" style={{ width: '20px', height: '20px', borderWidth: '2px' }} />
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    💬 Chat Seller
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={handleContact}
+                className="btn btn-outline"
+              >
+                📱 WhatsApp
+              </button>
+            </div>
+          </div>
         </div>
-
-        {/* 🔥 DESCRIPTION */}
-        <div style={{ marginTop: "20px" }}>
-          <h3>Description</h3>
-          <p style={{ color: "#555", lineHeight: "1.6" }}>
-            {product.description || "No description provided."}
-          </p>
-        </div>
-        <div className="mb-3">
-          <strong>Address:</strong>
-          <p>{product.address}</p>
-        </div>
-        {/* 🔥 CONTACT BUTTONS */}
-        <div
-          style={{
-            display: "flex",
-            gap: "12px",
-            flexWrap: "wrap",
-            marginTop: "25px",
-          }}
-        >
-          <button
-            onClick={handleChatSeller}
-            disabled={isStartingChat}
-            style={{
-              padding: "12px 20px",
-              background: isStartingChat ? "#aaa" : "#2e7d32",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: isStartingChat ? "not-allowed" : "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            {isStartingChat ? "Opening Chat..." : "Chat Seller"}
-          </button>
-
-          <button
-            onClick={handleContact}
-            style={{
-              padding: "12px 20px",
-              background: "#f5f5f5",
-              color: "#2e7d32",
-              border: "1px solid #c8ddcc",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "bold",
-            }}
-          >
-            Contact Seller
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

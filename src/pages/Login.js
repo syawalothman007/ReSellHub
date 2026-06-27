@@ -1,161 +1,163 @@
 import { useState } from "react";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from "firebase/auth";
 import { useNavigate, Link } from "react-router-dom";
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-
+import "./Login.css";
 
 function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
   const auth = getAuth();
   const navigate = useNavigate();
 
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   const handleLogin = async () => {
     setError("");
+    setLoading(true);
 
     try {
-      const userCredential =
-      await signInWithEmailAndPassword(
+      const userCredential = await signInWithEmailAndPassword(
         auth,
         email,
         password
       );
 
-    if (!userCredential.user.emailVerified) {
-      alert("Please verify your email before logging in.");
+      if (!userCredential.user.emailVerified) {
+        setLoading(false);
+        alert("Please verify your email before logging in.");
+        await auth.signOut();
+        return;
+      }
 
-      await auth.signOut();
-
-      return;
-    }
-
-    navigate("/");
+      setLoading(false);
+      navigate("/");
     } catch (err) {
-      setError("Invalid email or password");
+      setLoading(false);
+      setError("Invalid email or password.");
     }
-  };
-
-  const inputStyle = {
-    width: "100%",
-    padding: "10px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    marginBottom: "15px",
   };
 
   const handleGoogleLogin = async () => {
     try {
+      setLoading(true);
+
       const provider = new GoogleAuthProvider();
 
       await signInWithPopup(auth, provider);
 
+      setLoading(false);
+
       navigate("/");
     } catch (error) {
+      setLoading(false);
       alert(error.message);
     }
   };
+
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#f5f5f5",
-      }}
-    >
-      <div
-        style={{
-          width: "350px",
-          background: "white",
-          padding: "30px",
-          borderRadius: "15px",
-          boxShadow: "0 4px 10px rgba(0,0,0,0.05)",
-        }}
-      >
-        <h2 style={{ textAlign: "center", color: "#2e7d32" }}>
-          Login to ReSellHub
-        </h2>
-        <p style={{ textAlign: "center", color: "#777" }}>
-          Welcome back 👋
+    <div className="login-page">
+      <div className="login-card">
+
+        <div className="login-logo">
+          <img src="/Icon.png" alt="ReSellHub" />
+        </div>
+
+        <h2>Welcome Back</h2>
+
+        <p className="login-subtitle">
+          Sign in to continue buying and selling sustainably.
         </p>
-        {/* ERROR MESSAGE */}
+
         {error && (
-          <p style={{ color: "red", textAlign: "center" }}>{error}</p>
+          <div className="login-error">
+            {error}
+          </div>
         )}
 
-        {/* EMAIL */}
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          style={inputStyle}
-        />
+        <div className="form-group">
+          <label>Email Address</label>
 
-        {/* PASSWORD */}
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          style={inputStyle}
-        />
+          <input
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
-        {/* BUTTON */}
-        <button
-          onClick={handleLogin}
-          disabled={!email || !password}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: "#2e7d32",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "bold",
-          }}
-        >
-          Login
-        </button>
-        <button
-          onClick={handleGoogleLogin}
-          style={{
-            width: "100%",
-            padding: "12px",
-            marginTop: "10px",
-            background: "white",
-            color: "#333",
-            border: "1px solid #ccc",
-            borderRadius: "8px",
-            cursor: "pointer",
-            fontWeight: "bold"
-          }}
-        >
-          Continue with Google
-        </button>
-        <p style={{ marginTop: "15px" }}>
+        <div className="form-group">
+          <label>Password</label>
+
+          <div className="password-wrapper">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+
+            <button
+              type="button"
+              className="password-toggle"
+              onClick={() =>
+                setShowPassword(!showPassword)
+              }
+            >
+              {showPassword ? "🙈" : "👁"}
+            </button>
+          </div>
+
           <Link
             to="/forgot-password"
-            style={{
-              color: "#2e7d32",
-              textDecoration: "none"
-            }}
+            className="forgot-link"
           >
             Forgot Password?
           </Link>
-        </p>
+        </div>
 
-        {/* REGISTER LINK */}
-        <p style={{ marginTop: "15px", textAlign: "center" }}>
-          Don’t have an account?{" "}
-          <Link to="/register" style={{ color: "#2e7d32" }}>
-            Register
+        <button
+          className="login-btn"
+          onClick={handleLogin}
+          disabled={!email || !password || loading}
+        >
+          {loading ? "Signing In..." : "Login"}
+        </button>
+
+        <div className="divider">
+          <span>OR</span>
+        </div>
+
+        <button
+          className="google-btn"
+          onClick={handleGoogleLogin}
+          disabled={loading}
+        >
+          <img
+            src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+            alt="Google"
+          />
+
+          Continue with Google
+        </button>
+
+        <div className="register-section">
+          <p>
+            Don't have an account?
+          </p>
+
+          <Link to="/register">
+            Create Account
           </Link>
-        </p>
+        </div>
+
       </div>
     </div>
   );

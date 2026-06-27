@@ -1,0 +1,279 @@
+/* ===========================
+   LOGIN PAGE
+=========================== */
+
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #edf8ef 0%, #f7fcf8 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+}
+
+/* ===========================
+   LOGIN CARD
+=========================== */
+
+.login-card {
+  width: 100%;
+  max-width: 430px;
+  background: #ffffff;
+  border-radius: 22px;
+  padding: 40px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.08);
+  animation: fadeUp 0.4s ease;
+}
+.login-logo img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+.login-logo {
+  font-size: 55px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.login-card h2 {
+  color: #2e7d32;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.login-subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+  line-height: 1.6;
+}
+
+/* ===========================
+   ERROR BOX
+=========================== */
+
+.login-error {
+  background: #ffe8e8;
+  color: #d32f2f;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* ===========================
+   FORM
+=========================== */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 7px;
+  color: #333;
+  font-weight: 600;
+}
+
+.form-group input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 13px 15px;
+  border-radius: 12px;
+  border: 1px solid #dcdcdc;
+  font-size: 15px;
+  transition: all .25s ease;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #2e7d32;
+  box-shadow: 0 0 0 4px rgba(46,125,50,.15);
+}
+
+/* ===========================
+   PASSWORD
+=========================== */
+
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 55px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* ===========================
+   LINKS
+=========================== */
+
+.forgot-link {
+  display: block;
+  text-align: right;
+  margin-top: 10px;
+  text-decoration: none;
+  color: #2e7d32;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.forgot-link:hover {
+  text-decoration: underline;
+}
+
+/* ===========================
+   LOGIN BUTTON
+=========================== */
+
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: #2e7d32;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: .25s;
+}
+
+.login-btn:hover:not(:disabled) {
+  background: #256428;
+  transform: translateY(-2px);
+}
+
+.login-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   DIVIDER
+=========================== */
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin: 25px 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: #ddd;
+}
+
+.divider span {
+  margin: 0 15px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* ===========================
+   GOOGLE BUTTON
+=========================== */
+
+.google-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+  background: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: .25s;
+}
+
+.google-btn:hover:not(:disabled) {
+  background: #f7f7f7;
+}
+
+.google-btn img {
+  width: 20px;
+  height: 20px;
+}
+
+.google-btn:disabled {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
+/* ===========================
+   REGISTER
+=========================== */
+
+.register-section {
+  margin-top: 28px;
+  text-align: center;
+}
+
+.register-section p {
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.register-section a {
+  color: #2e7d32;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.register-section a:hover {
+  text-decoration: underline;
+}
+
+/* ===========================
+   ANIMATION
+=========================== */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===========================
+   MOBILE
+=========================== */
+
+@media (max-width: 480px) {
+
+  .login-card {
+    padding: 28px 22px;
+  }
+
+  .login-logo {
+    font-size: 45px;
+  }
+
+  .login-card h2 {
+    font-size: 28px;
+  }
+}

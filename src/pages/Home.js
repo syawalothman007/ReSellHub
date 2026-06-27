@@ -19,6 +19,8 @@ function Home() {
   const [filterCategory, setFilterCategory] = useState("");
   const [savedIds, setSavedIds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [selectedImagePreview, setSelectedImagePreview] = useState("");
   const imageInputRef = useRef(null);
   const navigate = useNavigate();
   const auth = getAuth();
@@ -125,6 +127,8 @@ function Home() {
     setAiSearchResult(null);
     setAiSearchError("");
     setFilterCategory("");
+    setSelectedImageFile(null);
+    setSelectedImagePreview("");
   }, []);
 
   const handleImageSearchClick = useCallback(() => {
@@ -133,7 +137,7 @@ function Home() {
     }
   }, [isAiSearching]);
 
-  const handleImageSearchChange = useCallback(async (event) => {
+  const handleImageSearchChange = useCallback((event) => {
     const file = event.target.files?.[0];
     event.target.value = "";
 
@@ -141,11 +145,34 @@ function Home() {
       return;
     }
 
+    setSelectedImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSelectedImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  const handleCancelSearch = useCallback(() => {
+    setSelectedImageFile(null);
+    setSelectedImagePreview("");
+    setIsAiSearching(false);
+    setAiSearchError("");
+  }, []);
+
+  const handleExecuteImageSearch = useCallback(async () => {
+    if (!selectedImageFile) return;
+
     setIsAiSearching(true);
     setAiSearchError("");
 
     try {
-      const result = await analyzeProductImage(file);
+      const result = await analyzeProductImage(selectedImageFile);
+      
+      if (!result || (!result.productType && (!result.keywords || result.keywords.length === 0))) {
+        throw new Error("No products detected in this image. Please try another one.");
+      }
+
       const searchTerms = [...result.keywords];
 
       if (result.productType && !searchTerms.includes(result.productType)) {
@@ -159,6 +186,9 @@ function Home() {
       setAppliedSearch(searchTerms.join(" "));
       setSearchInput(searchTerms.join(", "));
       showToast("AI image analysis completed!", "success");
+      
+      setSelectedImageFile(null);
+      setSelectedImagePreview("");
     } catch (error) {
       setAiSearchResult(null);
       const errMsg = error.message || "AI image search failed. Please try another image.";
@@ -167,7 +197,7 @@ function Home() {
     } finally {
       setIsAiSearching(false);
     }
-  }, []);
+  }, [selectedImageFile]);
 
   const resultsSummary = useMemo(() => {
     const count = filteredProducts.length;
@@ -329,6 +359,69 @@ function Home() {
             display: flex;
             flex-direction: column;
             gap: var(--space-md);
+          }
+
+          .image-preview-panel {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            background: #f9fafb;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            animation: fadeIn 0.3s ease;
+          }
+          .preview-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1.5px solid var(--border);
+            flex-shrink: 0;
+          }
+          .preview-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
+          .preview-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            text-align: center;
+          }
+          .preview-overlay p {
+            margin: 0;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--primary-dark);
+          }
+          .preview-actions {
+            display: flex;
+            gap: var(--space-sm);
+          }
+          @media (max-width: 576px) {
+            .image-preview-panel {
+              flex-direction: column;
+              align-items: stretch;
+              text-align: center;
+            }
+            .preview-container {
+              margin: 0 auto;
+            }
+            .preview-actions {
+              justify-content: center;
+            }
           }
 
           .search-form {
@@ -745,6 +838,38 @@ function Home() {
             Search
           </button>
         </form>
+
+        {selectedImagePreview && (
+          <div className="image-preview-panel">
+            <div className="preview-container">
+              <img src={selectedImagePreview} alt="Selected search input preview" className="preview-img" />
+              {isAiSearching && (
+                <div className="preview-overlay">
+                  <span className="spinner" style={{ width: "20px", height: "20px", borderWidth: "2.5px" }} />
+                  <p>Analyzing image...</p>
+                </div>
+              )}
+            </div>
+            <div className="preview-actions">
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={handleCancelSearch}
+                disabled={isAiSearching}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleExecuteImageSearch}
+                disabled={isAiSearching}
+              >
+                {isAiSearching ? "Analyzing..." : "Search Image"}
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="filter-controls">
           {/* CATEGORIES PILL SCROLL */}

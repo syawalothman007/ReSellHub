@@ -1,4 +1,5 @@
 import { useState } from "react";
+import logo from "../assets/icon.jpeg";
 import {
   getAuth,
   signInWithEmailAndPassword,
@@ -67,7 +68,7 @@ function Login() {
       <div className="login-card">
 
         <div className="login-logo">
-          <img src="/Icon.png" alt="ReSellHub" />
+          <img src={logo} alt="ReSellHub" />
         </div>
 
         <h2>Welcome Back</h2>

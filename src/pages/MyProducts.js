@@ -3,13 +3,16 @@ import { db } from "../firebase/firebase";
 import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { markProductAsSold } from "../firebase/productService";
 import { getProductThumbnail } from "../utils/productImages";
 import { getProductCategory } from "../utils/categories";
+import { isProductSold, PRODUCT_STATUS } from "../utils/productStatus";
 import { showToast } from "../utils/toast";
 
 function MyProducts() {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [markingSoldIds, setMarkingSoldIds] = useState([]);
   const auth = getAuth();
   const navigate = useNavigate();
 
@@ -49,6 +52,31 @@ function MyProducts() {
       showToast("Product deleted successfully!", "success");
     } catch (error) {
       showToast(error.message, "error");
+    }
+  };
+
+  const handleMarkAsSold = async (id) => {
+    const confirmSold = window.confirm(
+      "Are you sure you want to mark this product as Sold?"
+    );
+
+    if (!confirmSold) return;
+
+    try {
+      setMarkingSoldIds((prev) => [...prev, id]);
+      await markProductAsSold(id);
+      setProducts((prev) =>
+        prev.map((product) =>
+          product.id === id
+            ? { ...product, status: PRODUCT_STATUS.SOLD }
+            : product
+        )
+      );
+      showToast("Product marked as sold successfully!", "success");
+    } catch (error) {
+      showToast(error.message || "Failed to mark product as sold.", "error");
+    } finally {
+      setMarkingSoldIds((prev) => prev.filter((productId) => productId !== id));
     }
   };
 
@@ -159,6 +187,10 @@ function MyProducts() {
             background: var(--primary-dark);
             color: white;
           }
+          .badge-sold {
+            background: #dc2626;
+            color: white;
+          }
           .card-content {
             padding: var(--space-md);
             display: flex;
@@ -234,6 +266,31 @@ function MyProducts() {
           .action-btn.delete-btn:hover {
             background: #fef2f2;
             color: #dc2626;
+          }
+          .sold-actions {
+            border-top: 1px solid var(--border);
+            background: #fafafa;
+            padding: 10px;
+          }
+          .mark-sold-btn {
+            width: 100%;
+            border: none;
+            border-radius: var(--radius-md);
+            background: #16a34a;
+            color: white;
+            padding: 11px 14px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+          }
+          .mark-sold-btn:hover:not(:disabled) {
+            background: #15803d;
+            transform: translateY(-1px);
+          }
+          .mark-sold-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
           }
           /* Loading Skeleton */
           .skeleton-card {
@@ -347,6 +404,8 @@ function MyProducts() {
             {products.map((product) => {
               const productThumbnail = getProductThumbnail(product);
               const category = getProductCategory(product);
+              const isSold = isProductSold(product);
+              const isMarkingSold = markingSoldIds.includes(product.id);
 
               return (
                 <div
@@ -360,6 +419,9 @@ function MyProducts() {
                       alt={product.name}
                     />
                     <div className="badge-overlay-container">
+                      {isSold && (
+                        <span className="card-badge badge-sold">SOLD</span>
+                      )}
                       {product.condition && (
                         <span className="card-badge badge-condition">{product.condition}</span>
                       )}
@@ -427,6 +489,22 @@ function MyProducts() {
                       Delete
                     </button>
                   </div>
+
+                  {!isSold && (
+                    <div className="sold-actions">
+                      <button
+                        className="mark-sold-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkAsSold(product.id);
+                        }}
+                        disabled={isMarkingSold}
+                        aria-label="Mark product as sold"
+                      >
+                        {isMarkingSold ? "Marking as Sold..." : "Mark as Sold"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

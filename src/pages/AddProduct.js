@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { getAuth } from "firebase/auth";
 import { MAX_PRODUCT_IMAGES, isValidImageFile } from "../utils/productImages";
 import { PRODUCT_CATEGORIES } from "../utils/categories";
+import { PRODUCT_STATUS } from "../utils/productStatus";
 import { showToast } from "../utils/toast";
 
 function AddProduct() {
@@ -105,6 +106,7 @@ function AddProduct() {
         weight,
         description,
         imageUrls,
+        status: PRODUCT_STATUS.AVAILABLE,
         userId: auth.currentUser.uid,
         phone,
         address,

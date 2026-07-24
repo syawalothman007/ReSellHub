@@ -387,7 +387,7 @@ function App() {
               </NavLink>
 
               <NavLink
-                to="/add"
+                to="/add-product"
                 className={({ isActive }) => `navbar-menu-link ${isActive ? "active" : ""}`}
                 onClick={closeMenu}
               >
@@ -493,6 +493,11 @@ function App() {
         <Route
           path="/dashboard"
           element={<Dashboard />}
+        />
+
+        <Route
+          path="/add-product"
+          element={<AddProduct />}
         />
 
         <Route

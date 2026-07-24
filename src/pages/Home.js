@@ -6,6 +6,7 @@ import { getAuth } from "firebase/auth";
 import { collection, getDocs, addDoc } from "firebase/firestore";
 import { getProductThumbnail } from "../utils/productImages";
 import { getCategoryOptions, getProductCategory } from "../utils/categories";
+import { isProductAvailable } from "../utils/productStatus";
 import { analyzeProductImage } from "../firebase/aiImageSearch";
 import { showToast } from "../utils/toast";
 
@@ -46,7 +47,7 @@ function Home() {
       const data = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      })).filter(isProductAvailable);
       setProducts(data);
     };
 

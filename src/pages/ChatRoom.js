@@ -10,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/firebase";
-import { sendMessage } from "../firebase/chatService";
+import { markChatAsRead, sendMessage } from "../firebase/chatService";
 import { showToast } from "../utils/toast";
 
 function ChatRoom() {
@@ -97,6 +97,12 @@ function ChatRoom() {
   // 🔹 Fetch partner's profile name and photo
   useEffect(() => {
     if (!chat || !user) return;
+
+    if (chat.unreadBy?.[user.uid] === true) {
+      markChatAsRead({ chatId: chat.id, userId: user.uid }).catch((error) => {
+        showToast(error.message || "Failed to mark chat as read.", "error");
+      });
+    }
 
     const fetchPartnerProfile = async () => {
       const partnerUid = chat.participants?.find((uid) => uid !== user.uid);

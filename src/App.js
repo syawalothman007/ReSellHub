@@ -20,6 +20,7 @@ import AdminProducts from "./pages/AdminProducts";
 
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase/firebase";
+import { subscribeToUnreadChats } from "./firebase/chatService";
 import { showToast } from "./utils/toast";
 
 import "./App.css";
@@ -40,6 +41,7 @@ function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
+  const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
 
   // 🔹 Listen to custom window toasts
   useEffect(() => {
@@ -110,6 +112,19 @@ function App() {
 
     return () => unsubscribe();
   }, [auth]);
+
+  useEffect(() => {
+    if (!user) {
+      setHasUnreadMessages(false);
+      return;
+    }
+
+    return subscribeToUnreadChats({
+      userId: user.uid,
+      onChange: (unreadChatIds) => setHasUnreadMessages(unreadChatIds.size > 0),
+      onError: (error) => showToast(error.message, "error"),
+    });
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -185,6 +200,7 @@ function App() {
             padding: 6px 0;
             border-bottom: 2px solid transparent;
             transition: all var(--transition-fast);
+            position: relative;
           }
 
           .navbar-menu-link:hover {
@@ -195,6 +211,21 @@ function App() {
             color: var(--primary);
             border-bottom-color: var(--primary);
             font-weight: 700;
+          }
+
+          .navbar-menu-link.has-unread {
+            padding-right: 12px;
+          }
+
+          .navbar-unread-dot {
+            position: absolute;
+            top: 2px;
+            right: 0;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            box-shadow: 0 0 0 2px var(--bg-card);
           }
 
           .navbar-user-section {
@@ -412,10 +443,15 @@ function App() {
 
               <NavLink
                 to="/messages"
-                className={({ isActive }) => `navbar-menu-link ${isActive ? "active" : ""}`}
+                className={({ isActive }) =>
+                  `navbar-menu-link ${hasUnreadMessages ? "has-unread" : ""} ${isActive ? "active" : ""}`
+                }
                 onClick={closeMenu}
               >
                 Messages
+                {hasUnreadMessages && (
+                  <span className="navbar-unread-dot" aria-label="Unread messages" />
+                )}
               </NavLink>
 
               {/* USER GREETING */}

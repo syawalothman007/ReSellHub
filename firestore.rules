@@ -26,7 +26,8 @@ service cloud.firestore {
                'productTitle',
                'participants',
                'lastMessage',
-               'lastUpdated'
+               'lastUpdated',
+               'unreadBy'
              ])
              && request.resource.data.keys().hasAll([
                'buyerId',
@@ -35,7 +36,8 @@ service cloud.firestore {
                'productTitle',
                'participants',
                'lastMessage',
-               'lastUpdated'
+               'lastUpdated',
+               'unreadBy'
              ])
              && request.resource.data.buyerId is string
              && request.resource.data.sellerId is string
@@ -54,24 +56,82 @@ service cloud.firestore {
              && exists(/databases/$(database)/documents/products/$(request.resource.data.productId))
              && get(/databases/$(database)/documents/products/$(request.resource.data.productId)).data.userId == request.resource.data.sellerId
              && request.resource.data.lastMessage == ''
-             && request.resource.data.lastUpdated == request.time;
+             && request.resource.data.lastUpdated == request.time
+             && request.resource.data.unreadBy is map
+             && request.resource.data.unreadBy.keys().hasOnly(request.resource.data.participants)
+             && request.resource.data.unreadBy.keys().hasAll(request.resource.data.participants)
+             && request.resource.data.unreadBy[request.resource.data.buyerId] == false
+             && request.resource.data.unreadBy[request.resource.data.sellerId] == false;
     }
 
     function isValidChatUpdate() {
       return isChatParticipant()
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'lastMessage',
-               'lastUpdated'
+               'lastUpdated',
+               'unreadBy'
              ])
              && request.resource.data.buyerId == resource.data.buyerId
              && request.resource.data.sellerId == resource.data.sellerId
              && request.resource.data.productId == resource.data.productId
              && request.resource.data.productTitle == resource.data.productTitle
              && request.resource.data.participants == resource.data.participants
+             && isValidUnreadBy()
+             && (
+               isValidSendChatUpdate()
+               || isValidReadChatUpdate()
+             );
+    }
+
+    function isValidUnreadBy() {
+      return request.resource.data.unreadBy is map
+             && request.resource.data.unreadBy.keys().hasOnly(resource.data.participants)
+             && request.resource.data.unreadBy.keys().hasAll(resource.data.participants)
+             && request.resource.data.unreadBy[resource.data.buyerId] is bool
+             && request.resource.data.unreadBy[resource.data.sellerId] is bool;
+    }
+
+    function isValidSendChatUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasAll([
+               'lastMessage',
+               'lastUpdated',
+               'unreadBy'
+             ])
              && request.resource.data.lastMessage is string
              && request.resource.data.lastMessage.size() > 0
              && request.resource.data.lastMessage.size() <= 500
-             && request.resource.data.lastUpdated == request.time;
+             && request.resource.data.lastUpdated == request.time
+             && (
+               (
+                 request.auth.uid == resource.data.buyerId
+                 && request.resource.data.unreadBy[resource.data.buyerId] == false
+                 && request.resource.data.unreadBy[resource.data.sellerId] == true
+               )
+               || (
+                 request.auth.uid == resource.data.sellerId
+                 && request.resource.data.unreadBy[resource.data.sellerId] == false
+                 && request.resource.data.unreadBy[resource.data.buyerId] == true
+               )
+             );
+    }
+
+    function isValidReadChatUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'unreadBy'
+             ])
+             && request.resource.data.lastMessage == resource.data.lastMessage
+             && request.resource.data.lastUpdated == resource.data.lastUpdated
+             && request.resource.data.unreadBy[request.auth.uid] == false
+             && (
+               (
+                 request.auth.uid == resource.data.buyerId
+                 && request.resource.data.unreadBy[resource.data.sellerId] == resource.data.unreadBy[resource.data.sellerId]
+               )
+               || (
+                 request.auth.uid == resource.data.sellerId
+                 && request.resource.data.unreadBy[resource.data.buyerId] == resource.data.unreadBy[resource.data.buyerId]
+               )
+             );
     }
 
     function isValidMessageCreate(chatId) {

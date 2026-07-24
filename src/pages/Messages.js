@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/firebase";
+import { isChatUnreadForUser } from "../firebase/chatService";
 import { showToast } from "../utils/toast";
 
 function Messages() {
@@ -278,8 +279,9 @@ function Messages() {
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: var(--primary);
-            box-shadow: 0 0 0 2px var(--primary-light);
+            background: #ef4444;
+            box-shadow: 0 0 0 2px #fee2e2;
+            flex-shrink: 0;
           }
           /* Skeleton Loader */
           .skeleton-card {
@@ -360,9 +362,6 @@ function Messages() {
         <div className="messages-header">
           <h1>
             Inbox
-            {!loading && chats.length > 0 && (
-              <span className="count-badge">{chats.length}</span>
-            )}
           </h1>
         </div>
 
@@ -431,6 +430,9 @@ function Messages() {
                     <span className="chat-time">
                       {formatDate(chat.lastUpdated)}
                     </span>
+                    {isChatUnreadForUser(chat, user.uid) && (
+                      <span className="unread-dot" aria-label="Unread messages" />
+                    )}
                   </div>
                 </div>
               );

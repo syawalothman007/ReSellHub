@@ -2,8 +2,12 @@ import {
   collection,
   doc,
   getDoc,
+  onSnapshot,
+  query,
   serverTimestamp,
   setDoc,
+  updateDoc,
+  where,
   writeBatch,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -33,6 +37,10 @@ export const getOrCreateChat = async ({
     participants: [buyerId, sellerId],
     lastMessage: "",
     lastUpdated: serverTimestamp(),
+    unreadBy: {
+      [buyerId]: false,
+      [sellerId]: false,
+    },
   });
 
   return chatId;
@@ -44,19 +52,85 @@ export const sendMessage = async ({ chatId, senderId, text }) => {
   if (!trimmedText) return;
 
   const chatRef = doc(db, "chats", chatId);
+  const chatSnap = await getDoc(chatRef);
+
+  if (!chatSnap.exists()) {
+    throw new Error("Chat not found.");
+  }
+
+  const participants = chatSnap.data().participants || [];
+  const receiverId = participants.find((participantId) => participantId !== senderId);
+
+  if (!participants.includes(senderId) || !receiverId) {
+    throw new Error("You do not have access to this chat.");
+  }
+
   const messageRef = doc(collection(db, "chats", chatId, "messages"));
-  const batch = writeBatch(db);
+const batch = writeBatch(db);
 
-  batch.set(messageRef, {
-    senderId,
-    text: trimmedText,
-    createdAt: serverTimestamp(),
+batch.set(messageRef, {
+  senderId,
+  text: trimmedText,
+  createdAt: serverTimestamp(),
+});
+
+const unreadBy = {
+  ...chatSnap.data().unreadBy,
+  [senderId]: false,
+  [receiverId]: true,
+};
+
+batch.update(chatRef, {
+  lastMessage: trimmedText,
+  lastUpdated: serverTimestamp(),
+  unreadBy,
+});
+
+await batch.commit();
+};
+
+export const markChatAsRead = async ({ chatId, userId }) => {
+  if (!chatId || !userId) return;
+
+  const chatRef = doc(db, "chats", chatId);
+  const chatSnap = await getDoc(chatRef);
+
+  if (!chatSnap.exists()) return;
+
+  const unreadBy = {
+    ...chatSnap.data().unreadBy,
+    [userId]: false,
+  };
+
+  await updateDoc(chatRef, {
+    unreadBy,
   });
+};
 
-  batch.update(chatRef, {
-    lastMessage: trimmedText,
-    lastUpdated: serverTimestamp(),
-  });
+export const isChatUnreadForUser = (chat, userId) =>
+  Boolean(userId && chat?.unreadBy?.[userId] === true);
 
-  await batch.commit();
+export const subscribeToUnreadChats = ({ userId, onChange, onError }) => {
+  if (!userId) return () => {};
+
+  const chatsQuery = query(
+    collection(db, "chats"),
+    where("participants", "array-contains", userId)
+  );
+
+  return onSnapshot(
+    chatsQuery,
+    (snapshot) => {
+      const unreadChatIds = new Set(
+        snapshot.docs
+          .filter((chatDoc) => isChatUnreadForUser(chatDoc.data(), userId))
+          .map((chatDoc) => chatDoc.id)
+      );
+
+      onChange(unreadChatIds);
+    },
+    (error) => {
+      onError?.(error);
+    }
+  );
 };

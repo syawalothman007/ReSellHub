@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import Home from "./pages/Home";
@@ -25,8 +25,6 @@ import { showToast } from "./utils/toast";
 
 import "./App.css";
 import logo from "./assets/icon.jpeg";
-import { Navigate } from "react-router-dom";
-
 import {
   getAuth,
   signOut,
@@ -34,7 +32,16 @@ import {
 } from "firebase/auth";
 
 function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
+
+function AppContent() {
   const auth = getAuth();
+  const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
   const [userName, setUserName] = useState("");
@@ -42,6 +49,7 @@ function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [authReady, setAuthReady] = useState(false);
 
   // 🔹 Listen to custom window toasts
   useEffect(() => {
@@ -102,10 +110,13 @@ function App() {
               currentUser.email?.split("@")[0] ||
               "User"
             );
+          } finally {
+            setAuthReady(true);
           }
         } else {
           setUserName("");
           setIsAdmin(false);
+          setAuthReady(true);
         }
       }
     );
@@ -129,18 +140,24 @@ function App() {
   const handleLogout = async () => {
     try {
       await signOut(auth);
+      setUser(null);
       setUserName("");
+      setIsAdmin(false);
+      setHasUnreadMessages(false);
       setIsMenuOpen(false);
       showToast("Successfully logged out!", "success");
+      navigate("/", { replace: true });
     } catch (error) {
       showToast(error.message, "error");
     }
   };
 
   const closeMenu = () => setIsMenuOpen(false);
+  const protectedRoute = (element) =>
+    authReady ? (user ? element : <Navigate to="/" replace />) : null;
 
   return (
-    <Router>
+    <>
       {/* LOCAL STYLES FOR THE RESPONSIVE NAVBAR */}
       <style>
         {`
@@ -528,17 +545,17 @@ function App() {
 
         <Route
           path="/dashboard"
-          element={<Dashboard />}
+          element={protectedRoute(<Dashboard />)}
         />
 
         <Route
           path="/add-product"
-          element={<AddProduct />}
+          element={protectedRoute(<AddProduct />)}
         />
 
         <Route
           path="/add"
-          element={<AddProduct />}
+          element={protectedRoute(<AddProduct />)}
         />
 
         <Route
@@ -548,32 +565,32 @@ function App() {
 
         <Route
           path="/profile"
-          element={<Profile />}
+          element={protectedRoute(<Profile />)}
         />
 
         <Route
           path="/my-products"
-          element={<MyProducts />}
+          element={protectedRoute(<MyProducts />)}
         />
 
         <Route
           path="/saved"
-          element={<Saved />}
+          element={protectedRoute(<Saved />)}
         />
 
         <Route
           path="/messages"
-          element={<Messages />}
+          element={protectedRoute(<Messages />)}
         />
 
         <Route
           path="/messages/:chatId"
-          element={<ChatRoom />}
+          element={protectedRoute(<ChatRoom />)}
         />
 
         <Route
           path="/edit/:id"
-          element={<EditProduct />}
+          element={protectedRoute(<EditProduct />)}
         />
         <Route path="/forgot-password"
           element={<ForgotPassword />}
@@ -581,32 +598,38 @@ function App() {
         <Route
           path="/admin"
           element={
-            isAdmin
-              ? <AdminDashboard />
-              : <Navigate to="/" replace />
+            authReady
+              ? user && isAdmin
+                ? <AdminDashboard />
+                : <Navigate to="/" replace />
+              : null
           }
         />
 
         <Route
           path="/admin/users"
           element={
-            isAdmin
-              ? <AdminUsers />
-              : <Navigate to="/" replace />
+            authReady
+              ? user && isAdmin
+                ? <AdminUsers />
+                : <Navigate to="/" replace />
+              : null
           }
         />
 
         <Route
           path="/admin/products"
           element={
-            isAdmin
-              ? <AdminProducts />
-              : <Navigate to="/" replace />
+            authReady
+              ? user && isAdmin
+                ? <AdminProducts />
+                : <Navigate to="/" replace />
+              : null
           }
         />
       </Routes>
 
-    </Router>
+    </>
   );
 }
 

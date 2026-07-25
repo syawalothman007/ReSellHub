@@ -6,7 +6,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useNavigate, Link } from "react-router-dom";
+import { db } from "../firebase/firebase";
 import "./Login.css";
 
 function Login() {
@@ -19,6 +21,11 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const getPostLoginPath = async (uid) => {
+    const userSnap = await getDoc(doc(db, "users", uid));
+    return userSnap.exists() && userSnap.data().role === "admin" ? "/admin" : "/";
+  };
 
   const handleLogin = async () => {
     setError("");
@@ -38,8 +45,9 @@ function Login() {
         return;
       }
 
+      const redirectPath = await getPostLoginPath(userCredential.user.uid);
       setLoading(false);
-      navigate("/");
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       setLoading(false);
       setError("Invalid email or password.");
@@ -52,11 +60,12 @@ function Login() {
 
       const provider = new GoogleAuthProvider();
 
-      await signInWithPopup(auth, provider);
+      const userCredential = await signInWithPopup(auth, provider);
+      const redirectPath = await getPostLoginPath(userCredential.user.uid);
 
       setLoading(false);
 
-      navigate("/");
+      navigate(redirectPath, { replace: true });
     } catch (error) {
       setLoading(false);
       alert(error.message);

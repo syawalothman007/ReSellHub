@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 
 import Home from "./pages/Home";
@@ -17,6 +17,7 @@ import ChatRoom from "./pages/ChatRoom";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminUsers from "./pages/AdminUsers";
 import AdminProducts from "./pages/AdminProducts";
+import AdminLayout from "./layouts/AdminLayout";
 
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "./firebase/firebase";
@@ -41,6 +42,7 @@ function App() {
 
 function AppContent() {
   const auth = getAuth();
+  const location = useLocation();
   const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
@@ -153,8 +155,15 @@ function AppContent() {
   };
 
   const closeMenu = () => setIsMenuOpen(false);
+  const isAdminRoute = location.pathname.startsWith("/admin");
   const protectedRoute = (element) =>
     authReady ? (user ? element : <Navigate to="/" replace />) : null;
+  const protectedAdminRoute = (element) =>
+    authReady
+      ? user && isAdmin
+        ? element
+        : <Navigate to="/" replace />
+      : null;
 
   return (
     <>
@@ -360,6 +369,7 @@ function AppContent() {
       </style>
 
       {/* NAVBAR */}
+      {!isAdminRoute && (
       <nav className="navbar-container">
         {/* LEFT */}
         <NavLink to="/" className="navbar-brand-section" onClick={closeMenu}>
@@ -492,6 +502,7 @@ function AppContent() {
           )}
         </div>
       </nav>
+      )}
 
       {/* GLOBAL TOAST CONTAINER */}
       <div className="toast-container" aria-live="polite">
@@ -595,38 +606,11 @@ function AppContent() {
         <Route path="/forgot-password"
           element={<ForgotPassword />}
         />
-        <Route
-          path="/admin"
-          element={
-            authReady
-              ? user && isAdmin
-                ? <AdminDashboard />
-                : <Navigate to="/" replace />
-              : null
-          }
-        />
-
-        <Route
-          path="/admin/users"
-          element={
-            authReady
-              ? user && isAdmin
-                ? <AdminUsers />
-                : <Navigate to="/" replace />
-              : null
-          }
-        />
-
-        <Route
-          path="/admin/products"
-          element={
-            authReady
-              ? user && isAdmin
-                ? <AdminProducts />
-                : <Navigate to="/" replace />
-              : null
-          }
-        />
+        <Route path="/admin" element={protectedAdminRoute(<AdminLayout />)}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="products" element={<AdminProducts />} />
+        </Route>
       </Routes>
 
     </>

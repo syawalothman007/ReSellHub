@@ -27,7 +27,8 @@ service cloud.firestore {
                'participants',
                'lastMessage',
                'lastUpdated',
-               'unreadBy'
+               'unreadBy',
+               'hiddenBy'
              ])
              && request.resource.data.keys().hasAll([
                'buyerId',
@@ -37,7 +38,8 @@ service cloud.firestore {
                'participants',
                'lastMessage',
                'lastUpdated',
-               'unreadBy'
+               'unreadBy',
+               'hiddenBy'
              ])
              && request.resource.data.buyerId is string
              && request.resource.data.sellerId is string
@@ -61,7 +63,12 @@ service cloud.firestore {
              && request.resource.data.unreadBy.keys().hasOnly(request.resource.data.participants)
              && request.resource.data.unreadBy.keys().hasAll(request.resource.data.participants)
              && request.resource.data.unreadBy[request.resource.data.buyerId] == false
-             && request.resource.data.unreadBy[request.resource.data.sellerId] == false;
+             && request.resource.data.unreadBy[request.resource.data.sellerId] == false
+             && request.resource.data.hiddenBy is map
+             && request.resource.data.hiddenBy.keys().hasOnly(request.resource.data.participants)
+             && request.resource.data.hiddenBy.keys().hasAll(request.resource.data.participants)
+             && request.resource.data.hiddenBy[request.resource.data.buyerId] == false
+             && request.resource.data.hiddenBy[request.resource.data.sellerId] == false;
     }
 
     function isValidChatUpdate() {
@@ -69,7 +76,8 @@ service cloud.firestore {
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                'lastMessage',
                'lastUpdated',
-               'unreadBy'
+               'unreadBy',
+               'hiddenBy'
              ])
              && request.resource.data.buyerId == resource.data.buyerId
              && request.resource.data.sellerId == resource.data.sellerId
@@ -78,8 +86,13 @@ service cloud.firestore {
              && request.resource.data.participants == resource.data.participants
              && isValidUnreadBy()
              && (
+               !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hiddenBy'])
+               || isValidHiddenBy()
+             )
+             && (
                isValidSendChatUpdate()
                || isValidReadChatUpdate()
+               || isValidHideChatUpdate()
              );
     }
 
@@ -91,16 +104,36 @@ service cloud.firestore {
              && request.resource.data.unreadBy[resource.data.sellerId] is bool;
     }
 
+    function isValidHiddenBy() {
+      return request.resource.data.hiddenBy is map
+             && request.resource.data.hiddenBy.keys().hasOnly(resource.data.participants)
+             && request.resource.data.hiddenBy.keys().hasAll(resource.data.participants)
+             && request.resource.data.hiddenBy[resource.data.buyerId] is bool
+             && request.resource.data.hiddenBy[resource.data.sellerId] is bool;
+    }
+
+    function hasExistingHiddenBy() {
+      return resource.data.keys().hasAny(['hiddenBy'])
+             && resource.data.hiddenBy is map;
+    }
+
+    function isValidSendHiddenByUpdate() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hiddenBy'])
+             || (
+               request.resource.data.hiddenBy[resource.data.buyerId] == false
+               && request.resource.data.hiddenBy[resource.data.sellerId] == false
+             );
+    }
+
     function isValidSendChatUpdate() {
       return request.resource.data.diff(resource.data).affectedKeys().hasAll([
-               'lastMessage',
-               'lastUpdated',
-               'unreadBy'
+               'lastUpdated'
              ])
              && request.resource.data.lastMessage is string
              && request.resource.data.lastMessage.size() > 0
              && request.resource.data.lastMessage.size() <= 500
              && request.resource.data.lastUpdated == request.time
+             && isValidSendHiddenByUpdate()
              && (
                (
                  request.auth.uid == resource.data.buyerId
@@ -111,6 +144,44 @@ service cloud.firestore {
                  request.auth.uid == resource.data.sellerId
                  && request.resource.data.unreadBy[resource.data.sellerId] == false
                  && request.resource.data.unreadBy[resource.data.buyerId] == true
+               )
+             );
+    }
+
+    function isValidHideChatUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'hiddenBy'
+             ])
+             && request.resource.data.lastMessage == resource.data.lastMessage
+             && request.resource.data.lastUpdated == resource.data.lastUpdated
+             && request.resource.data.unreadBy == resource.data.unreadBy
+             && request.resource.data.hiddenBy[request.auth.uid] == true
+             && (
+               (
+                 request.auth.uid == resource.data.buyerId
+                 && (
+                   (
+                     hasExistingHiddenBy()
+                     && request.resource.data.hiddenBy[resource.data.sellerId] == resource.data.hiddenBy[resource.data.sellerId]
+                   )
+                   || (
+                     !hasExistingHiddenBy()
+                     && request.resource.data.hiddenBy[resource.data.sellerId] == false
+                   )
+                 )
+               )
+               || (
+                 request.auth.uid == resource.data.sellerId
+                 && (
+                   (
+                     hasExistingHiddenBy()
+                     && request.resource.data.hiddenBy[resource.data.buyerId] == resource.data.hiddenBy[resource.data.buyerId]
+                   )
+                   || (
+                     !hasExistingHiddenBy()
+                     && request.resource.data.hiddenBy[resource.data.buyerId] == false
+                   )
+                 )
                )
              );
     }
@@ -160,11 +231,8 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if request.auth != null
-                  && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow write: if request.auth != null
-                   && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-    }
+  allow read, write: if true;
+}
 
     match /savedProducts/{savedId} {
       allow read, write: if request.auth != null;

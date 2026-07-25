@@ -10,7 +10,11 @@ import {
 } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/firebase";
-import { isChatUnreadForUser } from "../firebase/chatService";
+import {
+  hideChatForUser,
+  isChatHiddenForUser,
+  isChatUnreadForUser,
+} from "../firebase/chatService";
 import { showToast } from "../utils/toast";
 
 function Messages() {
@@ -20,6 +24,7 @@ function Messages() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profiles, setProfiles] = useState({});
+  const [openMenuChatId, setOpenMenuChatId] = useState(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -51,6 +56,7 @@ function Messages() {
             id: doc.id,
             ...doc.data(),
           }))
+          .filter((chat) => !isChatHiddenForUser(chat, user.uid))
           .sort((a, b) => {
             const aTime = a.lastUpdated?.toMillis?.() || 0;
             const bTime = b.lastUpdated?.toMillis?.() || 0;
@@ -127,6 +133,24 @@ function Messages() {
       .slice(0, 2)
       .join("")
       .toUpperCase();
+  };
+
+  const handleDeleteConversation = async (event, chatId) => {
+    event.stopPropagation();
+    setOpenMenuChatId(null);
+
+    const confirmed = window.confirm(
+      "Delete this conversation from your inbox? The chat history will be restored if either participant sends a new message."
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await hideChatForUser({ chatId, userId: user.uid });
+      showToast("Conversation deleted from your inbox.", "success");
+    } catch (error) {
+      showToast(error.message || "Failed to delete conversation.", "error");
+    }
   };
 
   return (
@@ -270,6 +294,55 @@ function Messages() {
             align-items: flex-end;
             gap: var(--space-xs);
             flex-shrink: 0;
+          }
+          .chat-actions {
+            position: relative;
+          }
+          .chat-menu-btn {
+            width: 30px;
+            height: 30px;
+            border: none;
+            border-radius: var(--radius-full);
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-fast);
+          }
+          .chat-menu-btn:hover {
+            background: #f3f4f6;
+            color: var(--text-dark);
+          }
+          .chat-menu {
+            position: absolute;
+            right: 0;
+            top: 34px;
+            min-width: 170px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            padding: 6px;
+            z-index: 10;
+          }
+          .chat-menu-item {
+            width: 100%;
+            border: none;
+            background: transparent;
+            color: #dc2626;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-align: left;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+          }
+          .chat-menu-item:hover {
+            background: #fee2e2;
           }
           .chat-time {
             color: var(--text-muted);
@@ -427,6 +500,36 @@ function Messages() {
 
                   {/* RIGHT COLUMN */}
                   <div className="chat-right">
+                    <div className="chat-actions">
+                      <button
+                        type="button"
+                        className="chat-menu-btn"
+                        aria-label="Conversation options"
+                        aria-expanded={openMenuChatId === chat.id}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMenuChatId((currentChatId) =>
+                            currentChatId === chat.id ? null : chat.id
+                          );
+                        }}
+                      >
+                        ⋮
+                      </button>
+                      {openMenuChatId === chat.id && (
+                        <div
+                          className="chat-menu"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <button
+                            type="button"
+                            className="chat-menu-item"
+                            onClick={(event) => handleDeleteConversation(event, chat.id)}
+                          >
+                            Delete Conversation
+                          </button>
+                        </div>
+                      )}
+                    </div>
                     <span className="chat-time">
                       {formatDate(chat.lastUpdated)}
                     </span>

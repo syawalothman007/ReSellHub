@@ -1,4 +1,7 @@
-import { NavLink } from "react-router-dom";
+import { useState } from "react";
+import { getAuth, signOut } from "firebase/auth";
+import { NavLink, useNavigate } from "react-router-dom";
+import { showToast } from "../utils/toast";
 
 /**
  * AdminNav
@@ -7,6 +10,22 @@ import { NavLink } from "react-router-dom";
  * when the current URL matches the link's path (exact match only).
  */
 function AdminNav() {
+  const auth = getAuth();
+  const navigate = useNavigate();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleAdminLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut(auth);
+      showToast("Successfully logged out!", "success");
+      navigate("/login", { replace: true });
+    } catch (error) {
+      showToast(error.message, "error");
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
     <nav className="admin-nav">
       <NavLink
@@ -36,6 +55,15 @@ function AdminNav() {
       >
         📦 Products
       </NavLink>
+
+      <button
+        type="button"
+        className="admin-nav-btn admin-nav-logout-btn"
+        onClick={handleAdminLogout}
+        disabled={isLoggingOut}
+      >
+        🚪 {isLoggingOut ? "Logging out..." : "Logout"}
+      </button>
     </nav>
   );
 }

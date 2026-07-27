@@ -162,7 +162,7 @@ function AppContent() {
     authReady
       ? user && isAdmin
         ? element
-        : <Navigate to="/" replace />
+        : <Navigate to={user ? "/" : "/login"} replace />
       : null;
 
   return (

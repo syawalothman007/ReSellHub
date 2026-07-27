@@ -140,6 +140,25 @@
   transform: translateY(-1px);
 }
 
+.admin-nav-logout-btn {
+  margin-left: auto;
+  cursor: pointer;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+
+.admin-nav-logout-btn:hover:not(:disabled) {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.admin-nav-logout-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 /* Responsive: stack on small screens */
 @media (max-width: 480px) {
   .admin-nav {
@@ -151,6 +170,10 @@
     justify-content: center;
     padding: 8px 12px;
     font-size: 0.85rem;
+  }
+
+  .admin-nav-logout-btn {
+    margin-left: 0;
   }
 }
 
@@ -666,6 +689,25 @@
   box-shadow: 0 10px 20px rgba(16, 185, 129, 0.24);
 }
 
+.admin-nav-logout-btn {
+  margin-left: auto;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+  cursor: pointer;
+}
+
+.admin-nav-logout-btn:hover:not(:disabled) {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.admin-nav-logout-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .admin-stats-grid {
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 18px;
@@ -955,6 +997,10 @@
 
   .admin-nav {
     position: static;
+  }
+
+  .admin-nav-logout-btn {
+    margin-left: 0;
   }
 
   .admin-toolbar {

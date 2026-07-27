@@ -25,7 +25,7 @@ function AdminProducts() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         showToast("Access Denied: Please log in first.", "error");
-        navigate("/");
+        navigate("/login", { replace: true });
         setAuthLoading(false);
         return;
       }

@@ -58,6 +58,127 @@ const getTopItem = (items, key) =>
 const getBottomItem = (items, key) =>
   items.length ? [...items].sort((a, b) => a[key] - b[key])[0] : null;
 
+function getUniqueTopItem(items, key) {
+  const validItems = items.filter((item) => Number(item[key]) > 0);
+
+  if (!validItems.length) {
+    return null;
+  }
+
+  const sortedItems = [...validItems].sort((a, b) => b[key] - a[key]);
+  const [topItem, secondItem] = sortedItems;
+
+  if (secondItem && topItem[key] === secondItem[key]) {
+    return null;
+  }
+
+  return topItem;
+}
+
+function getSustainabilityTip(dashboardData) {
+  const {
+    totalProducts,
+    categoryStats,
+    priceStats,
+    materialStats,
+    wasteReduced,
+    co2Saved,
+    chartType,
+  } = dashboardData;
+
+  const highestAveragePriceCategory = getUniqueTopItem(priceStats, "averagePrice");
+  if ((!chartType || chartType === "averagePrice") && highestAveragePriceCategory) {
+    return (
+      <>
+        💰 <strong>{highestAveragePriceCategory.name}</strong> has the highest average selling price
+        (RM {formatNumber(highestAveragePriceCategory.averagePrice)}). If you own unused items in
+        this category, listing them could generate higher returns while extending the product's
+        lifespan.
+      </>
+    );
+  }
+
+  const largestCategory = getUniqueTopItem(categoryStats, "count");
+  if ((!chartType || chartType === "categoryDistribution" || chartType === "marketplace") && largestCategory) {
+    return (
+      <>
+        📊 Most of the products belong to <strong>{largestCategory.name}</strong>. Reusing these
+        items contributes the most to reducing waste in your marketplace activity.
+      </>
+    );
+  }
+
+  const co2Contributors = [
+    ...categoryStats.map((category) => ({
+      name: category.name,
+      co2: category.co2 || 0,
+    })),
+    ...materialStats.map((material) => ({
+      name: material.name,
+      co2: material.co2 || 0,
+    })),
+  ];
+  const highestCo2Contributor = getUniqueTopItem(co2Contributors, "co2");
+  if ((!chartType || chartType === "co2") && highestCo2Contributor) {
+    return (
+      <>
+        🌱 The greatest environmental impact comes from{" "}
+        <strong>{highestCo2Contributor.name}</strong> products. Continuing to reuse these items can
+        further reduce carbon emissions.
+      </>
+    );
+  }
+
+  if ((!chartType || chartType === "waste") && wasteReduced > 10) {
+    return (
+      <>
+        ♻️ Overall, this platform divert over <strong>{formatNumber(wasteReduced)} kg</strong> of
+        reusable products from potential landfill waste.
+      </>
+    );
+  }
+
+  if ((!chartType || chartType === "co2") && co2Saved > 20) {
+    return (
+      <>
+        🌍 ReSellHub marketplace has helped save approximately{" "}
+        <strong>{formatNumber(co2Saved)} kg of CO₂</strong>, showing the positive environmental
+        impact of buying and selling second-hand products.
+      </>
+    );
+  }
+
+  const largestCategoryShare = percentage(largestCategory?.count, totalProducts);
+  if (
+    (!chartType || chartType === "categoryDistribution" || chartType === "marketplace") &&
+    totalProducts >= 3 &&
+    largestCategoryShare < 40
+  ) {
+    return (
+      <>
+        📦 The listings are well distributed across multiple categories, helping extend the lifespan
+        of a variety of reusable products.
+      </>
+    );
+  }
+
+  if (totalProducts < 3) {
+    return (
+      <>
+        💡 Add more product listings to generate richer sustainability insights and unlock more
+        meaningful dashboard statistics.
+      </>
+    );
+  }
+
+  return (
+    <>
+      🌿 Every product reused through ReSellHub helps reduce waste and supports a more sustainable
+      community.
+    </>
+  );
+}
+
 function StatCard({ icon, label, value, detail }) {
   return (
     <div className="dashboard-stat-card">
@@ -71,7 +192,7 @@ function StatCard({ icon, label, value, detail }) {
   );
 }
 
-function InsightPanel({ title, metrics, observation, recommendation }) {
+function InsightPanel({ title, metrics, observation, sustainabilityTip }) {
   return (
     <div className="dashboard-insight-card">
       <p className="dashboard-eyebrow">Insights</p>
@@ -92,8 +213,11 @@ function InsightPanel({ title, metrics, observation, recommendation }) {
       </div>
 
       <div className="dashboard-note recommendation">
-        <strong>Recommendation</strong>
-        <p>{recommendation}</p>
+        <strong>
+          <span aria-hidden="true">🌿</span>
+          Sustainability Tips
+        </strong>
+        <p>{sustainabilityTip}</p>
       </div>
     </div>
   );
@@ -171,6 +295,7 @@ function Dashboard() {
       count: 0,
       value: 0,
       weight: 0,
+      co2: 0,
     };
   });
 
@@ -190,12 +315,14 @@ function Dashboard() {
         count: 0,
         value: 0,
         weight: 0,
+        co2: 0,
       };
     }
 
     categoryStatsMap[category].count += 1;
     categoryStatsMap[category].value += price;
     categoryStatsMap[category].weight += weight;
+    categoryStatsMap[category].co2 += co2;
 
     if (!materialStatsMap[material]) {
       materialStatsMap[material] = {
@@ -346,6 +473,34 @@ function Dashboard() {
 
   const hasProducts = totalProducts > 0;
   const emptyMessage = "Add product listings to generate this insight.";
+  const dashboardData = {
+    totalProducts,
+    categoryStats,
+    priceStats,
+    materialStats,
+    wasteReduced,
+    co2Saved,
+  };
+  const categoryDistributionTip = getSustainabilityTip({
+    ...dashboardData,
+    chartType: "categoryDistribution",
+  });
+  const averagePriceTip = getSustainabilityTip({
+    ...dashboardData,
+    chartType: "averagePrice",
+  });
+  const wasteReductionTip = getSustainabilityTip({
+    ...dashboardData,
+    chartType: "waste",
+  });
+  const co2SavingsTip = getSustainabilityTip({
+    ...dashboardData,
+    chartType: "co2",
+  });
+  const marketplaceTip = getSustainabilityTip({
+    ...dashboardData,
+    chartType: "marketplace",
+  });
 
   return (
     <div className="dashboard-page">
@@ -542,8 +697,8 @@ function Dashboard() {
           }
 
           .dashboard-note.recommendation {
-            background: #eff6ff;
-            border: 1px solid #bfdbfe;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
             margin-top: var(--space-md);
           }
 
@@ -558,7 +713,7 @@ function Dashboard() {
           }
           
           .dashboard-note.recommendation strong {
-             color: #1e3a8a;
+             color: var(--primary-dark);
           }
 
           .dashboard-note p {
@@ -672,8 +827,8 @@ function Dashboard() {
       </style>
 
       <div className="dashboard-header">
-        <h1>Sustainability Dashboard</h1>
-        <p>Marketplace health, reuse impact, and sustainability recommendations.</p>
+        <h1>Sustainability Dashboard ( Impact Estimation )</h1>
+        <p>Marketplace health, reuse impact, and sustainability tips.</p>
       </div>
 
       <div className="dashboard-summary-grid">
@@ -729,11 +884,7 @@ function Dashboard() {
                 ? `Active redistribution of ${mostPopularCategory.name} products represents ${formatNumber(topCategoryShare)}% of our circular marketplace, showing which type of household assets are being successfully diverted from waste streams.`
                 : emptyMessage
             }
-            recommendation={
-              hasProducts && leastPopularCategory
-                ? `Promote sustainable consumption choices in low-activity sectors like ${leastPopularCategory.name} to expand the environmental benefits of product reuse across all categories.`
-                : "Once listings exist, use this view to analyze circular economy balance."
-            }
+            sustainabilityTip={categoryDistributionTip}
           />
         }
       />
@@ -768,11 +919,7 @@ function Dashboard() {
                 ? `Recycling and exchanging items in the ${highestAveragePriceCategory.name} category avoids the carbon footprint of high-value manufacturing while providing affordable alternatives for users.`
                 : emptyMessage
             }
-            recommendation={
-              highestAveragePriceCategory
-                ? `Position circular solutions in higher-priced sectors like ${highestAveragePriceCategory.name} to demonstrate how sustainable consumption directly reduces both family budgets and industrial resource demand.`
-                : "Average price insights will appear after products are listed with prices."
-            }
+            sustainabilityTip={averagePriceTip}
           />
         }
       />
@@ -801,11 +948,7 @@ function Dashboard() {
                 ? `The reuse of products in the ${largestWasteCategory.name} category has successfully prevented the largest physical volume of municipal solid waste (${formatNumber(largestWasteCategory.weight)} kg) from entering local landfills.`
                 : emptyMessage
             }
-            recommendation={
-              largestWasteCategory
-                ? `Encourage robust community collection of high-weight products in the ${largestWasteCategory.name} sector to optimize our net diversion metrics and support municipal recycling programs.`
-                : "Ask sellers to enter product weights to unlock reliable waste reduction analytics."
-            }
+            sustainabilityTip={wasteReductionTip}
           />
         }
       />
@@ -834,11 +977,7 @@ function Dashboard() {
                 ? `Circulating used ${largestCo2Material.name.toLowerCase()} products prevents high-emission extraction and processing of raw materials, keeping ${formatNumber(largestCo2Material.co2)} kg of greenhouse gases out of the atmosphere.`
                 : emptyMessage
             }
-            recommendation={
-              largestCo2Material
-                ? `Educate buyers on the specific carbon benefits of purchasing pre-loved ${largestCo2Material.name.toLowerCase()} items to encourage targeted eco-conscious decisions.`
-                : "CO2 insights improve when listings include both material type and product weight."
-            }
+            sustainabilityTip={co2SavingsTip}
           />
         }
       />
@@ -867,11 +1006,7 @@ function Dashboard() {
                 ? `The local community has prioritized circular exchanges within the ${mostPopularCategory.name} channel, demonstrating high alignment with sustainable consumption values.`
                 : emptyMessage
             }
-            recommendation={
-              mostPopularCategory
-                ? `Leverage the high engagement in the ${mostPopularCategory.name} channel to distribute sustainability facts, driving broader awareness of carbon foot-printing and the circular economy.`
-                : "Marketplace trends will become meaningful as product coverage grows."
-            }
+            sustainabilityTip={marketplaceTip}
           />
         }
       />
